@@ -1,0 +1,25 @@
+[project]
+name = "yaratrix"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+authors = [
+    { name = "parth.kamble", email = "parth.kamble4536@gmail.com" }
+]
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.141.1",
+    "mitreattack-python>=6.2.0",
+    "pytest>=9.1.1",
+    "rich>=15.0.0",
+    "typer>=0.27.1",
+    "uvicorn>=0.52.4",
+    "yara-python>=4.5.4",
+]
+
+[project.scripts]
+yaratrix = "yaratrix.cli.main:run_cli"
+
+[build-system]
+requires = ["uv_build>=0.12.5,<0.13.0"]
+build-backend = "uv_build"
