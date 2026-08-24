@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>YaraTrix Report — {{ report_title }}</title>
+  <meta name="description" content="YaraTrix YARA-to-MITRE ATT&CK threat analysis report for {{ report_title }}" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <style>
+    :root {
+      --bg-primary:    #0d0f14;
+      --bg-secondary:  #13161e;
+      --bg-card:       #1a1d28;
+      --bg-card-hover: #1e2230;
+      --border:        #252836;
+      --border-accent: #2d3248;
+      --text-primary:  #e8eaf0;
+      --text-secondary:#9aa0b4;
+      --text-dim:      #5c6178;
+      --accent:        #4f8ef7;
+      --accent-glow:   rgba(79,142,247,0.15);
+      --sev-critical:  #ff3b5c;
+      --sev-high:      #ff6b2b;
+      --sev-medium:    #f5c518;
+      --sev-low:       #4f8ef7;
+      --sev-info:      #6b7280;
+      --tactic-color:  #7c6af7;
+      --success:       #22c55e;
+      --radius:        12px;
+      --radius-sm:     8px;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg-primary);
+      color: var(--text-primary);
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* ── Layout ── */
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 24px; }
+
+    /* ── Header ── */
+    .header {
+      background: linear-gradient(135deg, #0d0f14 0%, #13161e 50%, #1a1d28 100%);
+      border-bottom: 1px solid var(--border);
+      padding: 32px 0;
+      position: relative;
+      overflow: hidden;
+    }
+    .header::before {
+      content: '';
+      position: absolute; inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% -20%, rgba(79,142,247,0.12), transparent);
+      pointer-events: none;
+    }
+    .header-inner { display: flex; align-items: center; justify-content: space-between; gap: 24px; flex-wrap: wrap; }
+    .logo { display: flex; align-items: center; gap: 12px; }
+    .logo-icon {
+      width: 48px; height: 48px; border-radius: 12px;
+      background: linear-gradient(135deg, #4f8ef7, #7c6af7);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 22px; box-shadow: 0 0 20px rgba(79,142,247,0.4);
+    }
+    .logo-text h1 { font-size: 22px; font-weight: 700; letter-spacing: -0.5px; }
+    .logo-text p { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+    .header-meta { text-align: right; }
+    .header-meta .scan-time { font-size: 12px; color: var(--text-secondary); }
+    .header-meta .scan-target {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; color: var(--accent);
+      background: var(--accent-glow); padding: 4px 10px;
+      border-radius: 6px; border: 1px solid rgba(79,142,247,0.3);
+      display: inline-block; margin-top: 6px;
+    }
+
+    /* ── Threat Banner ── */
+    .threat-banner {
+      padding: 28px 0;
+      border-bottom: 1px solid var(--border);
+    }
+    .threat-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; }
+    .stat-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 24px;
+      transition: transform 0.2s, border-color 0.2s;
+    }
+    .stat-card:hover { transform: translateY(-2px); border-color: var(--border-accent); }
+    .stat-card .label { font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: var(--text-secondary); margin-bottom: 8px; }
+    .stat-card .value { font-size: 28px; font-weight: 700; line-height: 1; }
+    .stat-card .sub { font-size: 12px; color: var(--text-secondary); margin-top: 4px; }
+    .val-critical { color: var(--sev-critical); }
+    .val-high     { color: var(--sev-high); }
+    .val-medium   { color: var(--sev-medium); }
+    .val-low      { color: var(--sev-low); }
+    .val-blue     { color: var(--accent); }
+    .val-tactic   { color: var(--tactic-color); }
+
+    /* ── Threat Level Badge ── */
+    .threat-level-badge {
+      display: inline-flex; align-items: center; gap: 8px;
+      padding: 6px 16px; border-radius: 999px; font-size: 13px; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 1px;
+    }
+    .badge-critical { background: rgba(255,59,92,0.15); color: var(--sev-critical); border: 1px solid rgba(255,59,92,0.3); }
+    .badge-high     { background: rgba(255,107,43,0.15); color: var(--sev-high);     border: 1px solid rgba(255,107,43,0.3); }
+    .badge-medium   { background: rgba(245,197,24,0.15); color: var(--sev-medium);   border: 1px solid rgba(245,197,24,0.3); }
+    .badge-low      { background: rgba(79,142,247,0.15);  color: var(--sev-low);      border: 1px solid rgba(79,142,247,0.3); }
+    .badge-none     { background: rgba(107,114,128,0.15); color: var(--sev-info);     border: 1px solid rgba(107,114,128,0.3); }
+    .pulse { width: 8px; height: 8px; border-radius: 50%; background: currentColor; animation: pulse 1.5s ease-in-out infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+    /* ── Narrative ── */
+    .narrative-section { padding: 28px 0; border-bottom: 1px solid var(--border); }
+    .section-title { font-size: 13px; text-transform: uppercase; letter-spacing: 1.5px; color: var(--text-secondary); margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+    .section-title::after { content:''; flex:1; height:1px; background: var(--border); }
+    .narrative-box {
+      background: var(--bg-card); border: 1px solid var(--border-accent);
+      border-left: 3px solid var(--accent); border-radius: var(--radius);
+      padding: 20px 24px; font-size: 14px; line-height: 1.8;
+      color: var(--text-primary); font-style: italic;
+    }
+
+    /* ── Kill Chain Heatmap ── */
+    .heatmap-section { padding: 28px 0; border-bottom: 1px solid var(--border); }
+    .kill-chain {
+      display: flex; flex-wrap: wrap; gap: 8px;
+    }
+    .kc-phase {
+      padding: 10px 16px; border-radius: var(--radius-sm);
+      font-size: 12px; font-weight: 500; text-transform: capitalize;
+      transition: transform 0.15s;
+      background: var(--bg-card); border: 1px solid var(--border);
+      color: var(--text-secondary);
+      letter-spacing: 0.3px;
+    }
+    .kc-phase:hover { transform: translateY(-2px); }
+    .kc-phase.hit {
+      background: linear-gradient(135deg, rgba(124,106,247,0.25), rgba(79,142,247,0.2));
+      border-color: rgba(124,106,247,0.5);
+      color: var(--text-primary);
+      box-shadow: 0 0 16px rgba(124,106,247,0.2);
+    }
+    .kc-phase.hit-critical { border-color: rgba(255,59,92,0.5); background: rgba(255,59,92,0.12); color: var(--sev-critical); }
+    .kc-phase.hit-high     { border-color: rgba(255,107,43,0.5); background: rgba(255,107,43,0.12); color: var(--sev-high); }
+    .kc-phase.hit-medium   { border-color: rgba(245,197,24,0.5); background: rgba(245,197,24,0.12); color: var(--sev-medium); }
+    .kc-phase.hit-low      { border-color: rgba(79,142,247,0.5);  background: rgba(79,142,247,0.12);  color: var(--sev-low); }
+
+    /* ── Technique Table ── */
+    .techniques-section { padding: 28px 0; border-bottom: 1px solid var(--border); }
+    .tech-table { width: 100%; border-collapse: collapse; }
+    .tech-table th {
+      text-align: left; padding: 12px 16px;
+      font-size: 11px; text-transform: uppercase; letter-spacing: 1px;
+      color: var(--text-secondary); border-bottom: 1px solid var(--border);
+      background: var(--bg-secondary);
+    }
+    .tech-table td { padding: 14px 16px; border-bottom: 1px solid var(--border); font-size: 13px; vertical-align: top; }
+    .tech-table tr:last-child td { border-bottom: none; }
+    .tech-table tr:hover td { background: var(--bg-card-hover); }
+    .tech-id {
+      font-family: 'JetBrains Mono', monospace; font-size: 12px;
+      background: var(--accent-glow); color: var(--accent);
+      padding: 3px 8px; border-radius: 5px; border: 1px solid rgba(79,142,247,0.2);
+      display: inline-block; white-space: nowrap;
+    }
+    .tech-name { font-weight: 500; color: var(--text-primary); }
+    .tech-desc { font-size: 12px; color: var(--text-secondary); margin-top: 3px; line-height: 1.5; }
+    .tactic-tag {
+      display: inline-block; padding: 2px 8px;
+      background: rgba(124,106,247,0.15); color: var(--tactic-color);
+      border: 1px solid rgba(124,106,247,0.3); border-radius: 4px;
+      font-size: 11px; text-transform: capitalize; margin: 2px 2px 2px 0;
+    }
+    .sev-badge {
+      display: inline-block; padding: 3px 10px; border-radius: 5px;
+      font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px;
+    }
+    .sev-critical { background: rgba(255,59,92,0.15); color: var(--sev-critical); border: 1px solid rgba(255,59,92,0.3); }
+    .sev-high     { background: rgba(255,107,43,0.15); color: var(--sev-high);     border: 1px solid rgba(255,107,43,0.3); }
+    .sev-medium   { background: rgba(245,197,24,0.15); color: var(--sev-medium);   border: 1px solid rgba(245,197,24,0.3); }
+    .sev-low      { background: rgba(79,142,247,0.15);  color: var(--sev-low);      border: 1px solid rgba(79,142,247,0.3); }
+    .sev-info     { background: rgba(107,114,128,0.15); color: var(--sev-info);     border: 1px solid rgba(107,114,128,0.3); }
+
+    /* ── Rule Match Table ── */
+    .rules-section { padding: 28px 0; border-bottom: 1px solid var(--border); }
+    .rule-card {
+      background: var(--bg-card); border: 1px solid var(--border);
+      border-radius: var(--radius); margin-bottom: 12px; overflow: hidden;
+      transition: border-color 0.2s;
+    }
+    .rule-card:hover { border-color: var(--border-accent); }
+    .rule-header {
+      display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+      padding: 14px 18px; border-bottom: 1px solid var(--border);
+    }
+    .rule-name { font-family: 'JetBrains Mono', monospace; font-size: 13px; font-weight: 500; color: var(--text-primary); flex: 1; }
+    .rule-body { padding: 12px 18px; }
+    .rule-desc { font-size: 12px; color: var(--text-secondary); margin-bottom: 10px; line-height: 1.6; }
+    .rule-meta { display: flex; gap: 16px; flex-wrap: wrap; }
+    .rule-meta-item { font-size: 11px; color: var(--text-dim); }
+    .rule-meta-item strong { color: var(--text-secondary); }
+    .strings-count {
+      font-size: 11px; color: var(--text-secondary);
+      background: var(--bg-secondary); padding: 3px 8px;
+      border-radius: 5px; border: 1px solid var(--border);
+    }
+
+    /* ── Confidence bar ── */
+    .confidence-bar { margin-top: 8px; }
+    .confidence-label { display: flex; justify-content: space-between; font-size: 12px; color: var(--text-secondary); margin-bottom: 6px; }
+    .bar-track { height: 6px; background: var(--bg-secondary); border-radius: 3px; overflow: hidden; }
+    .bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--tactic-color)); transition: width 1s ease; }
+
+    /* ── Footer ── */
+    .footer { padding: 32px 0; text-align: center; color: var(--text-dim); font-size: 12px; border-top: 1px solid var(--border); }
+    .footer a { color: var(--accent); text-decoration: none; }
+    .footer a:hover { text-decoration: underline; }
+
+    /* ── Responsive ── */
+    @media (max-width: 640px) {
+      .threat-grid { grid-template-columns: repeat(2, 1fr); }
+      .header-inner { flex-direction: column; text-align: center; }
+      .header-meta { text-align: center; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ═══ HEADER ═══ -->
+<header class="header">
+  <div class="container">
+    <div class="header-inner">
+      <div class="logo">
+        <div class="logo-icon">🎯</div>
+        <div class="logo-text">
+          <h1>YaraTrix</h1>
+          <p>YARA-to-MITRE ATT&amp;CK Mapping Engine</p>
+        </div>
+      </div>
+      <div class="header-meta">
+        <div class="scan-time">Generated {{ generated_at }}</div>
+        <div class="scan-target">{{ report_title }}</div>
+      </div>
+    </div>
+  </div>
+</header>
+
+<!-- ═══ THREAT STATS BANNER ═══ -->
+<section class="threat-banner">
+  <div class="container">
+    <div class="threat-grid">
+
+      <div class="stat-card">
+        <div class="label">Threat Level</div>
+        <div class="value" style="margin-top:4px;">
+          <span class="threat-level-badge badge-{{ threat_level }}">
+            <span class="pulse"></span>
+            {{ threat_level | upper }}
+          </span>
+        </div>
+        <div class="sub">Overall assessment</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="label">Confidence</div>
+        <div class="value val-blue">{{ "%.0f"|format(confidence_score * 100) }}%</div>
+        <div class="confidence-bar">
+          <div class="bar-track">
+            <div class="bar-fill" style="width:{{ "%.0f"|format(confidence_score * 100) }}%"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="stat-card">
+        <div class="label">Rules Matched</div>
+        <div class="value val-high">{{ total_matches }}</div>
+        <div class="sub">Across {{ files_with_matches }} file(s)</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="label">ATT&amp;CK Techniques</div>
+        <div class="value val-tactic">{{ unique_techniques | length }}</div>
+        <div class="sub">{{ unique_tactics | length }} tactic phase(s)</div>
+      </div>
+
+      <div class="stat-card">
+        <div class="label">Files Scanned</div>
+        <div class="value val-blue">{{ total_files }}</div>
+        <div class="sub">{{ files_with_matches }} with matches</div>
+      </div>
+
+    </div>
+  </div>
+</section>
+
+<!-- ═══ NARRATIVE ═══ -->
+<section class="narrative-section">
+  <div class="container">
+    <div class="section-title">Threat Narrative</div>
+    {% for narrative in narratives %}
+    <div class="narrative-box" style="{% if not loop.first %}margin-top:12px;{% endif %}">
+      {{ narrative }}
+    </div>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ═══ KILL CHAIN HEATMAP ═══ -->
+<section class="heatmap-section">
+  <div class="container">
+    <div class="section-title">Kill-Chain Coverage</div>
+    <div class="kill-chain">
+      {% set all_phases = [
+        "reconnaissance", "resource-development", "initial-access",
+        "execution", "persistence", "privilege-escalation",
+        "defense-evasion", "credential-access", "discovery",
+        "lateral-movement", "collection", "command-and-control",
+        "exfiltration", "impact"
+      ] %}
+      {% for phase in all_phases %}
+        {% if phase in tactic_severity_map %}
+          <div class="kc-phase hit hit-{{ tactic_severity_map[phase] }}" title="{{ phase }} — {{ tactic_severity_map[phase] | upper }}">
+            {{ phase.replace('-', ' ') }}
+          </div>
+        {% else %}
+          <div class="kc-phase">{{ phase.replace('-', ' ') }}</div>
+        {% endif %}
+      {% endfor %}
+    </div>
+  </div>
+</section>
+
+<!-- ═══ TECHNIQUE BREAKDOWN ═══ -->
+{% if technique_rows %}
+<section class="techniques-section">
+  <div class="container">
+    <div class="section-title">ATT&amp;CK Technique Breakdown</div>
+    <table class="tech-table">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Technique</th>
+          <th>Tactic(s)</th>
+          <th>Severity</th>
+          <th>Mitigations</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for row in technique_rows %}
+        <tr>
+          <td>
+            <span class="tech-id">{{ row.technique_id }}</span>
+          </td>
+          <td>
+            <div class="tech-name">{{ row.name or row.technique_id }}</div>
+            {% if row.description %}
+            <div class="tech-desc">{{ row.description[:200] }}{% if row.description|length > 200 %}…{% endif %}</div>
+            {% endif %}
+            {% if row.url %}
+            <a href="{{ row.url }}" target="_blank" rel="noopener" style="font-size:11px;color:var(--accent);text-decoration:none;margin-top:4px;display:inline-block;">↗ View on ATT&CK</a>
+            {% endif %}
+          </td>
+          <td>
+            {% for tactic in row.tactics %}
+            <span class="tactic-tag">{{ tactic.replace('-',' ') }}</span>
+            {% endfor %}
+          </td>
+          <td><span class="sev-badge sev-{{ row.severity }}">{{ row.severity | upper }}</span></td>
+          <td style="font-size:13px;color:var(--text-secondary);">{{ row.mitigation_count }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</section>
+{% endif %}
+
+<!-- ═══ RULE MATCHES ═══ -->
+<section class="rules-section">
+  <div class="container">
+    <div class="section-title">Rule Matches</div>
+    {% for match in rule_matches %}
+    <div class="rule-card">
+      <div class="rule-header">
+        <span class="rule-name">{{ match.rule_name }}</span>
+        <span class="sev-badge sev-{{ match.severity }}">{{ match.severity | upper }}</span>
+        <span class="tech-id">{{ match.mitre_technique }}</span>
+        <span class="tactic-tag">{{ match.mitre_tactic.replace('-',' ') }}</span>
+        {% if match.string_count > 0 %}
+        <span class="strings-count">{{ match.string_count }} string(s) matched</span>
+        {% endif %}
+      </div>
+      <div class="rule-body">
+        <div class="rule-desc">{{ match.description }}</div>
+        <div class="rule-meta">
+          <span class="rule-meta-item"><strong>File:</strong> {{ match.file_name }}</span>
+          <span class="rule-meta-item"><strong>Rule source:</strong> {{ match.rule_file }}</span>
+        </div>
+      </div>
+    </div>
+    {% else %}
+    <p style="color:var(--text-secondary);font-size:14px;">No rule matches recorded.</p>
+    {% endfor %}
+  </div>
+</section>
+
+<!-- ═══ FOOTER ═══ -->
+<footer class="footer">
+  <div class="container">
+    <p>
+      Generated by <a href="https://github.com/parthkamble4536-ship/YaraTrix" target="_blank">YaraTrix</a>
+      v{{ version }} &nbsp;·&nbsp; {{ generated_at }}
+      &nbsp;·&nbsp; MITRE ATT&amp;CK® is a registered trademark of The MITRE Corporation.
+    </p>
+  </div>
+</footer>
+
+</body>
+</html>

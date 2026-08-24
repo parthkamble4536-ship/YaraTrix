@@ -5,6 +5,8 @@ Commands:
   scan              Scan a single file.
   scan-dir          Scan an entire directory recursively.
   export-navigator  Generate a MITRE ATT&CK Navigator layer from scan results.
+  generate-report   Generate an HTML threat analysis report.
+  serve             Launch the REST API server.
   list-rules        List all loaded YARA rules.
 
 Run:  uv run yaratrix --help
@@ -15,6 +17,15 @@ from __future__ import annotations
 import json
 import os
 import sys
+
+# Force UTF-8 output on Windows to support rich's Unicode characters (arrows, etc.)
+if sys.platform == "win32":
+    import io
+    if hasattr(sys.stdout, "buffer"):
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+    if hasattr(sys.stderr, "buffer"):
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
+
 from pathlib import Path
 from typing import Any, Optional
 
@@ -40,6 +51,7 @@ from yaratrix import __version__
 from yaratrix.attack_client import get_default_client
 from yaratrix.mapper import map_scan_result, map_scan_results
 from yaratrix.navigator_export import export_navigator_layer
+from yaratrix.report_generator import render_report
 from yaratrix.rule_loader import load_rules
 from yaratrix.yara_engine import scan_directory, scan_file
 
@@ -390,7 +402,7 @@ def export_navigator(
             f"[bold]Target:[/bold] {target}\n"
             f"[bold]Output:[/bold] {output}\n"
             f"[dim]Rules:[/dim] {rules_dir}",
-            title="[green]YaraTrix → Navigator Export[/green]",
+            title="[green]YaraTrix -> Navigator Export[/green]",
             border_style="green",
         )
     )
@@ -430,14 +442,14 @@ def export_navigator(
 
     total_techniques = sum(len(m.unique_techniques) for m in mappings)
     if total_techniques == 0:
-        console.print("[yellow]⚠  No techniques found to export.[/yellow]")
+        console.print("[yellow]! No techniques found to export.[/yellow]")
         raise typer.Exit(0)
 
     # Export
     out_path = export_navigator_layer(mappings, output, layer_name=layer_name)
     console.print(
         Panel(
-            f"[bold green]✓ Navigator layer exported![/bold green]\n\n"
+            f"[bold green]Navigator layer exported![/bold green]\n\n"
             f"File: [cyan]{out_path}[/cyan]\n"
             f"Techniques covered: [bold]{total_techniques}[/bold]\n\n"
             f"Import at:\n"
@@ -518,7 +530,7 @@ def list_rules(
     console.print(f"\n[bold]{count}[/bold] rule(s) loaded from [dim]{len(loader.filepaths)}[/dim] file(s)")
 
     if loader.errors:
-        console.print(f"\n[yellow]⚠  {len(loader.errors)} rule(s) have meta validation issues:[/yellow]")
+        console.print(f"\n[yellow]! {len(loader.errors)} rule(s) have meta validation issues:[/yellow]")
         for err in loader.errors:
             console.print(f"  [dim]{err}[/dim]")
 
@@ -572,6 +584,117 @@ def _print_mapping_panel(mapping) -> None:
             )
         )
         console.print(tech_table)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  generate-report command
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.command(name="generate-report")
+def generate_report(
+    target: Path = typer.Argument(..., help="File or directory to scan."),
+    rules_dir: Path = typer.Option(
+        DEFAULT_RULES_DIR, "--rules-dir", "-r",
+        help="Directory containing .yar rule files.",
+    ),
+    output: Path = typer.Option(
+        Path("yaratrix_report.html"),
+        "--output", "-o",
+        help="Output path for the HTML report.",
+    ),
+    no_mitre: bool = typer.Option(False, "--no-mitre", help="Skip ATT&CK enrichment."),
+) -> None:
+    """Generate a [bold]HTML threat analysis report[/bold] for a file or directory scan."""
+
+    console.print(
+        Panel(
+            f"[bold]Target:[/bold] {target}\n"
+            f"[bold]Output:[/bold] {output}\n"
+            f"[dim]Rules:[/dim] {rules_dir}",
+            title="[green]YaraTrix -> HTML Report[/green]",
+            border_style="green",
+        )
+    )
+
+    with console.status("[bold green]Loading rules…"):
+        try:
+            loader = load_rules(rules_dir)
+        except FileNotFoundError as exc:
+            console.print(f"[red]Error:[/red] {exc}")
+            raise typer.Exit(1) from exc
+
+    if not loader.compiled:
+        console.print("[red]No rules compiled.[/red]")
+        raise typer.Exit(1)
+
+    # Scan
+    scan_results = []
+    report_title = target.name
+    if target.is_dir():
+        with console.status("[bold green]Scanning directory…"):
+            from yaratrix.yara_engine import scan_directory as _scan_dir
+            summary = _scan_dir(loader.compiled, target, rule_file_map=loader.filepaths)
+            scan_results = summary.results
+            report_title = target.name
+    elif target.is_file():
+        with console.status("[bold green]Scanning file…"):
+            scan_results = [scan_file(loader.compiled, target, rule_file_map=loader.filepaths)]
+    else:
+        console.print(f"[red]Error:[/red] Target not found: {target}")
+        raise typer.Exit(1)
+
+    # Map to ATT&CK
+    mappings = []
+    if not no_mitre:
+        with console.status("[bold green]Resolving MITRE ATT&CK techniques…"):
+            try:
+                client = get_default_client()
+                mappings = map_scan_results(scan_results, client=client)
+            except FileNotFoundError as exc:
+                console.print(f"[yellow]! ATT&CK enrichment skipped:[/yellow] {exc}")
+
+    # Render report
+    with console.status("[bold green]Rendering HTML report…"):
+        out_path = render_report(scan_results, mappings, output, report_title=report_title)
+
+    console.print(
+        Panel(
+            f"[bold green]HTML report generated![/bold green]\n\n"
+            f"File: [cyan]{out_path}[/cyan]\n"
+            f"Open in your browser to view the threat analysis.",
+            border_style="green",
+        )
+    )
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  serve command
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.command(name="serve")
+def serve(
+    host: str = typer.Option("127.0.0.1", "--host", help="Host to bind to."),
+    port: int = typer.Option(8000, "--port", "-p", help="Port to listen on."),
+    reload: bool = typer.Option(False, "--reload", help="Enable auto-reload (development)."),
+    log_level: str = typer.Option("info", "--log-level", help="Uvicorn log level."),
+) -> None:
+    """Launch the [bold]YaraTrix REST API[/bold] server."""
+    import uvicorn
+    console.print(
+        Panel(
+            f"[bold]YaraTrix API[/bold] starting on [cyan]http://{host}:{port}[/cyan]\n"
+            f"[dim]Docs: http://{host}:{port}/docs[/dim]",
+            title="[green]YaraTrix API Server[/green]",
+            border_style="green",
+        )
+    )
+    uvicorn.run(
+        "yaratrix.api.main:app",
+        host=host,
+        port=port,
+        reload=reload,
+        log_level=log_level,
+    )
 
 
 # ─────────────────────────────────────────────────────────────────────────────

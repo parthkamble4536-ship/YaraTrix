@@ -1,0 +1,3 @@
+# HTML reports are generated here by `yaratrix generate-report`
+# This file ensures the directory is tracked by git.
+# Reports themselves are excluded from version control (.gitignore).
