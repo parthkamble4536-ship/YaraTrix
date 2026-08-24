@@ -7,10 +7,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-import yara
 
 from yaratrix.rule_loader import load_rules
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Inline rule constants (mirrors conftest.py)
@@ -58,6 +56,7 @@ rule Missing_Meta_Rule {
 #  Happy-path: valid rules dir
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestLoadRulesValid:
     def test_compiled_rules_not_none(self, rules_dir: Path):
         loader = load_rules(rules_dir)
@@ -88,6 +87,7 @@ class TestLoadRulesValid:
 #  Single file
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestLoadRulesSingleFile:
     def test_load_single_yar_file(self, rule_yar_file: Path, tmp_path: Path):
         """load_rules should accept a dir containing a single .yar file."""
@@ -100,6 +100,7 @@ class TestLoadRulesSingleFile:
 # ─────────────────────────────────────────────────────────────────────────────
 #  Missing meta validation
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestLoadRulesValidation:
     def test_missing_meta_produces_warning(self, tmp_path: Path):
@@ -127,6 +128,7 @@ class TestLoadRulesValidation:
 # ─────────────────────────────────────────────────────────────────────────────
 #  Error handling
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestLoadRulesErrors:
     def test_nonexistent_dir_raises(self):

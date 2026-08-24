@@ -7,25 +7,23 @@ so they run without the 46 MB STIX bundle.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from datetime import UTC, datetime
+from unittest.mock import MagicMock
 
-import pytest
-
-from yaratrix.attack_client import TechniqueInfo, MitigationInfo
+from yaratrix.attack_client import MitigationInfo, TechniqueInfo
 from yaratrix.mapper import (
+    MappingResult,
+    _build_narrative,
     _compute_confidence,
     _compute_threat_level,
-    _build_narrative,
     map_scan_result,
-    MappingResult,
 )
 from yaratrix.models import RuleMatch, ScanResult, Severity
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _make_technique(technique_id: str, tactics: list[str], name: str = "") -> TechniqueInfo:
     return TechniqueInfo(
@@ -37,9 +35,7 @@ def _make_technique(technique_id: str, tactics: list[str], name: str = "") -> Te
         is_subtechnique="." in technique_id,
         parent_technique_id=technique_id.split(".")[0] if "." in technique_id else "",
         sub_techniques=[],
-        mitigations=[
-            MitigationInfo("M1000", "Test Mitigation", "Some mitigation description.")
-        ],
+        mitigations=[MitigationInfo("M1000", "Test Mitigation", "Some mitigation description.")],
         detection="Monitor for this.",
     )
 
@@ -62,7 +58,7 @@ def _make_rule_match(
 def _make_scan_result(*matches: RuleMatch, path: str = "/tmp/test.ps1") -> ScanResult:
     return ScanResult(
         target_file=path,
-        scan_time=datetime.now(tz=timezone.utc),
+        scan_time=datetime.now(tz=UTC),
         duration_ms=10.0,
         matches=list(matches),
     )
@@ -78,6 +74,7 @@ def _make_mock_client(technique_map: dict[str, TechniqueInfo | None]) -> MagicMo
 # ─────────────────────────────────────────────────────────────────────────────
 #  _compute_confidence
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestComputeConfidence:
     def test_zero_with_no_matches(self):
@@ -97,8 +94,16 @@ class TestComputeConfidence:
         assert score_crit > score_low
 
     def test_score_bounded_between_0_and_1(self):
-        tactics = ["execution", "persistence", "credential-access", "defense-evasion",
-                   "discovery", "lateral-movement", "exfiltration", "impact"]
+        tactics = [
+            "execution",
+            "persistence",
+            "credential-access",
+            "defense-evasion",
+            "discovery",
+            "lateral-movement",
+            "exfiltration",
+            "impact",
+        ]
         matches = [_make_rule_match(severity=Severity.CRITICAL)] * 10
         score = _compute_confidence(tactics, matches)
         assert 0.0 <= score <= 1.0
@@ -107,6 +112,7 @@ class TestComputeConfidence:
 # ─────────────────────────────────────────────────────────────────────────────
 #  _compute_threat_level
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestComputeThreatLevel:
     def test_none_for_zero(self):
@@ -128,6 +134,7 @@ class TestComputeThreatLevel:
 # ─────────────────────────────────────────────────────────────────────────────
 #  _build_narrative
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestBuildNarrative:
     def test_no_tactics_returns_clean_message(self):
@@ -155,11 +162,10 @@ class TestBuildNarrative:
 #  map_scan_result — integration with mock client
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestMapScanResult:
     def _client_for(self, *technique_ids: str) -> MagicMock:
-        mapping = {
-            tid: _make_technique(tid, ["execution"]) for tid in technique_ids
-        }
+        mapping = {tid: _make_technique(tid, ["execution"]) for tid in technique_ids}
         return _make_mock_client(mapping)
 
     def test_empty_scan_result_returns_no_mappings(self):
@@ -229,6 +235,7 @@ class TestMapScanResult:
 
     def test_to_dict_is_serialisable(self):
         import json
+
         match = _make_rule_match()
         result = _make_scan_result(match)
         client = self._client_for("T1059.001")

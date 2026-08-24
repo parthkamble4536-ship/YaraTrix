@@ -13,7 +13,6 @@ from __future__ import annotations
 
 import logging
 from dataclasses import dataclass, field
-from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
@@ -30,10 +29,12 @@ DEFAULT_STIX_PATH = _PROJECT_ROOT / "data" / "enterprise-attack.json"
 #  Data classes
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class MitigationInfo:
     """A single mitigation linked to a technique."""
-    mitigation_id: str        # e.g. "M1038"
+
+    mitigation_id: str  # e.g. "M1038"
     name: str
     description: str
 
@@ -48,13 +49,14 @@ class MitigationInfo:
 @dataclass
 class TechniqueInfo:
     """Full metadata for a single MITRE ATT&CK technique or sub-technique."""
-    technique_id: str          # e.g. "T1059.001"
-    name: str                  # e.g. "PowerShell"
-    tactics: list[str]         # tactic short names e.g. ["execution"]
+
+    technique_id: str  # e.g. "T1059.001"
+    name: str  # e.g. "PowerShell"
+    tactics: list[str]  # tactic short names e.g. ["execution"]
     description: str
-    url: str                   # ATT&CK website link
+    url: str  # ATT&CK website link
     is_subtechnique: bool
-    parent_technique_id: str   # empty if not a sub-technique
+    parent_technique_id: str  # empty if not a sub-technique
     sub_techniques: list[str]  # IDs of sub-techniques (empty for sub-techniques)
     mitigations: list[MitigationInfo] = field(default_factory=list)
     detection: str = ""
@@ -77,6 +79,7 @@ class TechniqueInfo:
 # ─────────────────────────────────────────────────────────────────────────────
 #  Attack Client
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class AttackClient:
     """
@@ -165,6 +168,7 @@ class AttackClient:
         except Exception:
             try:
                 import json as _json
+
                 t = _json.loads(technique.serialize())
             except Exception:
                 logger.warning("Could not deserialise STIX object for %s", technique_id)
@@ -194,9 +198,7 @@ class AttackClient:
         sub_technique_ids: list[str] = []
         if not is_subtechnique:
             try:
-                sub_techniques = self._data.get_subtechniques_of_technique(
-                    t["id"]
-                )
+                sub_techniques = self._data.get_subtechniques_of_technique(t["id"])
                 sub_technique_ids = [
                     dict(st).get("external_references", [{}])[0].get("external_id", "")
                     for st in sub_techniques

@@ -9,12 +9,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 
-class Severity(str, Enum):
+class Severity(StrEnum):
     """Rule severity levels."""
+
     CRITICAL = "critical"
     HIGH = "high"
     MEDIUM = "medium"
@@ -25,9 +26,10 @@ class Severity(str, Enum):
 @dataclass
 class MatchedString:
     """A single matched string or pattern offset within a scanned file."""
-    identifier: str       # e.g. "$encoded_ps"
-    offset: int           # byte offset in the file
-    data: bytes           # raw matched bytes (truncated to 128 bytes for safety)
+
+    identifier: str  # e.g. "$encoded_ps"
+    offset: int  # byte offset in the file
+    data: bytes  # raw matched bytes (truncated to 128 bytes for safety)
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -53,6 +55,7 @@ class RuleMatch:
         matched_strings:  List of matched string offsets.
         meta:             Raw rule meta dictionary (for any extra fields).
     """
+
     rule_name: str
     rule_file: str
     mitre_technique: str
@@ -96,6 +99,7 @@ class ScanResult:
         matches:          List of all rule matches found.
         errors:           Any non-fatal errors encountered during scanning.
     """
+
     target_file: str
     scan_time: datetime
     duration_ms: float
@@ -157,6 +161,7 @@ class DirectoryScanSummary:
         scan_time:    When the scan started.
         results:      Per-file ScanResult objects.
     """
+
     root_path: str
     scan_time: datetime
     results: list[ScanResult] = field(default_factory=list)

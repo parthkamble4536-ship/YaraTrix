@@ -4,9 +4,7 @@ Tests for yaratrix.models — core data structures.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-
-import pytest
+from datetime import UTC, datetime
 
 from yaratrix.models import (
     DirectoryScanSummary,
@@ -16,10 +14,10 @@ from yaratrix.models import (
     Severity,
 )
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 #  Severity enum
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestSeverity:
     def test_values_are_lowercase_strings(self):
@@ -42,6 +40,7 @@ class TestSeverity:
 #  MatchedString
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestMatchedString:
     def test_to_dict_encodes_bytes_as_hex(self):
         ms = MatchedString(identifier="$enc", offset=42, data=b"\xde\xad\xbe\xef")
@@ -58,6 +57,7 @@ class TestMatchedString:
 # ─────────────────────────────────────────────────────────────────────────────
 #  RuleMatch
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _make_match(**overrides) -> RuleMatch:
     defaults = dict(
@@ -114,10 +114,11 @@ class TestRuleMatch:
 #  ScanResult
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _make_scan_result(*matches: RuleMatch) -> ScanResult:
     return ScanResult(
         target_file="/tmp/test.ps1",
-        scan_time=datetime.now(tz=timezone.utc),
+        scan_time=datetime.now(tz=UTC),
         duration_ms=12.5,
         matches=list(matches),
     )
@@ -162,7 +163,17 @@ class TestScanResult:
     def test_to_dict_contains_required_keys(self):
         result = _make_scan_result()
         d = result.to_dict()
-        required = {"target_file", "scan_time", "duration_ms", "match_count", "techniques", "tactics", "severity_counts", "matches", "errors"}
+        required = {
+            "target_file",
+            "scan_time",
+            "duration_ms",
+            "match_count",
+            "techniques",
+            "tactics",
+            "severity_counts",
+            "matches",
+            "errors",
+        }
         assert required.issubset(d.keys())
 
     def test_match_count_in_dict(self):
@@ -176,11 +187,12 @@ class TestScanResult:
 #  DirectoryScanSummary
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestDirectoryScanSummary:
     def _make_summary(self, *results: ScanResult) -> DirectoryScanSummary:
         return DirectoryScanSummary(
             root_path="/tmp/testdir",
-            scan_time=datetime.now(tz=timezone.utc),
+            scan_time=datetime.now(tz=UTC),
             results=list(results),
         )
 

@@ -74,16 +74,18 @@ _TACTIC_PHRASES: dict[str, str] = {
 #  Data classes
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @dataclass
 class TechniqueMapping:
     """
     An enriched mapping of a matched rule → resolved ATT&CK technique.
     """
+
     rule_name: str
     technique_id: str
-    technique_info: TechniqueInfo | None   # None if ID not found in STIX
+    technique_info: TechniqueInfo | None  # None if ID not found in STIX
     severity: Severity
-    match_count: int                        # How many rules matched this technique
+    match_count: int  # How many rules matched this technique
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -106,15 +108,16 @@ class MappingResult:
     - Confidence score (0.0–1.0)
     - Human-readable narrative
     """
+
     target_file: str
     technique_mappings: list[TechniqueMapping] = field(default_factory=list)
 
     # Aggregated
-    unique_techniques: list[str] = field(default_factory=list)   # T-IDs, deduped
-    unique_tactics: list[str] = field(default_factory=list)       # tactic names, deduped
-    confidence_score: float = 0.0                                  # 0.0–1.0
-    threat_level: str = "none"                                     # low/medium/high/critical
-    narrative: str = ""                                            # human-readable summary
+    unique_techniques: list[str] = field(default_factory=list)  # T-IDs, deduped
+    unique_tactics: list[str] = field(default_factory=list)  # tactic names, deduped
+    confidence_score: float = 0.0  # 0.0–1.0
+    threat_level: str = "none"  # low/medium/high/critical
+    narrative: str = ""  # human-readable summary
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -131,6 +134,7 @@ class MappingResult:
 # ─────────────────────────────────────────────────────────────────────────────
 #  Core mapping functions
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _compute_confidence(
     tactics: list[str],
@@ -155,9 +159,7 @@ def _compute_confidence(
 
     # Severity contribution (40% weight)
     max_weight = _SEVERITY_WEIGHTS["critical"] * len(matches)
-    actual_weight = sum(
-        _SEVERITY_WEIGHTS.get(m.severity.value, 1.0) for m in matches
-    )
+    actual_weight = sum(_SEVERITY_WEIGHTS.get(m.severity.value, 1.0) for m in matches)
     severity_score = min(actual_weight / max(max_weight, 1.0), 1.0) * 0.4
 
     return min(tactic_score + severity_score, 1.0)

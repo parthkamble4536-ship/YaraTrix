@@ -11,13 +11,10 @@ This keeps the tests fast and self-contained.
 
 from __future__ import annotations
 
-import sys
-import tempfile
 from pathlib import Path
 
 import pytest
 import yara
-
 
 # ─────────────────────────────────────────────────────────────────────────────
 #  Inline YARA rule strings used across tests
@@ -80,6 +77,7 @@ rule Missing_Meta_Rule {
 # ─────────────────────────────────────────────────────────────────────────────
 #  Fixtures
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 @pytest.fixture
 def compiled_ps_rule() -> yara.Rules:
@@ -149,6 +147,8 @@ def clean_sample_file(tmp_path: Path) -> Path:
 
 
 @pytest.fixture
-def multi_sample_dir(tmp_path: Path, ps_sample_file: Path, bat_sample_file: Path, clean_sample_file: Path) -> Path:
+def multi_sample_dir(
+    tmp_path: Path, ps_sample_file: Path, bat_sample_file: Path, clean_sample_file: Path
+) -> Path:
     """A directory containing three files: one PS, one BAT, one clean."""
     return tmp_path

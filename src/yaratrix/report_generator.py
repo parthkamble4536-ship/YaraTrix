@@ -14,7 +14,7 @@ from __future__ import annotations
 
 import logging
 import sys
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -22,7 +22,7 @@ from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from yaratrix import __version__
 from yaratrix.mapper import MappingResult
-from yaratrix.models import ScanResult, Severity
+from yaratrix.models import ScanResult
 
 logger = logging.getLogger(__name__)
 
@@ -46,7 +46,7 @@ def _build_tactic_severity_map(mapping: MappingResult) -> dict[str, str]:
     tactic_sevs: dict[str, list[str]] = {}
     for tm in mapping.technique_mappings:
         # Use STIX-resolved tactics if available, else rule meta
-        tactics = (
+        (
             tm.technique_info.tactics
             if tm.technique_info
             else [t.strip() for t in tm.severity.value.split(",")]
@@ -61,7 +61,6 @@ def _build_tactic_severity_map(mapping: MappingResult) -> dict[str, str]:
 
     # Also include tactics from rule meta
     for tm in mapping.technique_mappings:
-        from yaratrix.models import RuleMatch
         pass
 
     result = {tactic: _worst_severity(sevs) for tactic, sevs in tactic_sevs.items()}
@@ -77,15 +76,17 @@ def _build_technique_rows(mapping: MappingResult) -> list[dict[str, Any]]:
             continue
         seen.add(tm.technique_id)
         info = tm.technique_info
-        rows.append({
-            "technique_id": tm.technique_id,
-            "name": info.name if info else "",
-            "description": info.description if info else "",
-            "url": info.url if info else "",
-            "tactics": info.tactics if info else [],
-            "severity": tm.severity.value,
-            "mitigation_count": len(info.mitigations) if info else 0,
-        })
+        rows.append(
+            {
+                "technique_id": tm.technique_id,
+                "name": info.name if info else "",
+                "description": info.description if info else "",
+                "url": info.url if info else "",
+                "tactics": info.tactics if info else [],
+                "severity": tm.severity.value,
+                "mitigation_count": len(info.mitigations) if info else 0,
+            }
+        )
     return rows
 
 
@@ -95,16 +96,18 @@ def _build_rule_matches(scan_results: list[ScanResult]) -> list[dict[str, Any]]:
     for result in scan_results:
         file_name = Path(result.target_file).name
         for match in result.matches:
-            rows.append({
-                "rule_name": match.rule_name,
-                "file_name": file_name,
-                "rule_file": Path(match.rule_file).name,
-                "mitre_technique": match.mitre_technique,
-                "mitre_tactic": match.mitre_tactic,
-                "severity": match.severity.value,
-                "description": match.description,
-                "string_count": len(match.matched_strings),
-            })
+            rows.append(
+                {
+                    "rule_name": match.rule_name,
+                    "file_name": file_name,
+                    "rule_file": Path(match.rule_file).name,
+                    "mitre_technique": match.mitre_technique,
+                    "mitre_tactic": match.mitre_tactic,
+                    "severity": match.severity.value,
+                    "description": match.description,
+                    "string_count": len(match.matched_strings),
+                }
+            )
     return rows
 
 
@@ -163,9 +166,7 @@ def render_report(
                 seen_techs.add(row["technique_id"])
                 all_technique_rows.append(row)
 
-    tactic_severity_map = {
-        t: _worst_severity(sevs) for t, sevs in combined_tactic_sevs.items()
-    }
+    tactic_severity_map = {t: _worst_severity(sevs) for t, sevs in combined_tactic_sevs.items()}
 
     # Overall confidence and threat level from highest-confidence mapping
     confidence_score = max((m.confidence_score for m in mappings), default=0.0)
@@ -180,7 +181,7 @@ def render_report(
     context = {
         "version": __version__,
         "report_title": report_title,
-        "generated_at": datetime.now(tz=timezone.utc).strftime("%Y-%m-%d %H:%M UTC"),
+        "generated_at": datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M UTC"),
         "threat_level": threat_level,
         "confidence_score": confidence_score,
         "total_matches": total_matches,

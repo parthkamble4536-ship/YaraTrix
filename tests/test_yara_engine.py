@@ -4,13 +4,12 @@ Tests for yaratrix.yara_engine — file and directory scanning.
 
 from __future__ import annotations
 
-import time
 from pathlib import Path
 
 import pytest
 import yara
 
-from yaratrix.models import RuleMatch, ScanResult, Severity
+from yaratrix.models import ScanResult, Severity
 from yaratrix.yara_engine import scan_directory, scan_file
 
 # Inline YARA rule strings (same as conftest fixtures but usable as module-level constants)
@@ -45,62 +44,46 @@ rule LSASS_Memory_Access {
 """
 
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 #  scan_file — basic matching
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestScanFile:
-    def test_match_found_for_ps_file(
-        self, compiled_ps_rule: yara.Rules, ps_sample_file: Path
-    ):
+    def test_match_found_for_ps_file(self, compiled_ps_rule: yara.Rules, ps_sample_file: Path):
         result = scan_file(compiled_ps_rule, ps_sample_file)
         assert isinstance(result, ScanResult)
         assert len(result.matches) >= 1
 
-    def test_no_match_for_clean_file(
-        self, compiled_ps_rule: yara.Rules, clean_sample_file: Path
-    ):
+    def test_no_match_for_clean_file(self, compiled_ps_rule: yara.Rules, clean_sample_file: Path):
         result = scan_file(compiled_ps_rule, clean_sample_file)
         assert result.matches == []
 
-    def test_correct_rule_name_in_match(
-        self, compiled_ps_rule: yara.Rules, ps_sample_file: Path
-    ):
+    def test_correct_rule_name_in_match(self, compiled_ps_rule: yara.Rules, ps_sample_file: Path):
         result = scan_file(compiled_ps_rule, ps_sample_file)
         names = {m.rule_name for m in result.matches}
         assert "Suspicious_PowerShell_EncodedCommand" in names
 
-    def test_match_has_correct_technique(
-        self, compiled_ps_rule: yara.Rules, ps_sample_file: Path
-    ):
+    def test_match_has_correct_technique(self, compiled_ps_rule: yara.Rules, ps_sample_file: Path):
         result = scan_file(compiled_ps_rule, ps_sample_file)
         techniques = {m.mitre_technique for m in result.matches}
         assert "T1059.001" in techniques
 
-    def test_match_has_correct_tactic(
-        self, compiled_ps_rule: yara.Rules, ps_sample_file: Path
-    ):
+    def test_match_has_correct_tactic(self, compiled_ps_rule: yara.Rules, ps_sample_file: Path):
         result = scan_file(compiled_ps_rule, ps_sample_file)
         tactics = {m.mitre_tactic for m in result.matches}
         assert "execution" in tactics
 
-    def test_match_has_correct_severity(
-        self, compiled_ps_rule: yara.Rules, ps_sample_file: Path
-    ):
+    def test_match_has_correct_severity(self, compiled_ps_rule: yara.Rules, ps_sample_file: Path):
         result = scan_file(compiled_ps_rule, ps_sample_file)
         severities = {m.severity for m in result.matches}
         assert Severity.HIGH in severities
 
-    def test_result_has_duration_ms(
-        self, compiled_ps_rule: yara.Rules, ps_sample_file: Path
-    ):
+    def test_result_has_duration_ms(self, compiled_ps_rule: yara.Rules, ps_sample_file: Path):
         result = scan_file(compiled_ps_rule, ps_sample_file)
         assert result.duration_ms >= 0.0
 
-    def test_result_has_scan_time(
-        self, compiled_ps_rule: yara.Rules, ps_sample_file: Path
-    ):
+    def test_result_has_scan_time(self, compiled_ps_rule: yara.Rules, ps_sample_file: Path):
         result = scan_file(compiled_ps_rule, ps_sample_file)
         assert result.scan_time is not None
 
@@ -119,9 +102,7 @@ class TestScanFile:
         names = {m.rule_name for m in result.matches}
         assert "LSASS_Memory_Access" in names
 
-    def test_matched_strings_present(
-        self, compiled_ps_rule: yara.Rules, ps_sample_file: Path
-    ):
+    def test_matched_strings_present(self, compiled_ps_rule: yara.Rules, ps_sample_file: Path):
         result = scan_file(compiled_ps_rule, ps_sample_file)
         assert len(result.matches) > 0
         # At least one match should have captured strings
@@ -134,16 +115,13 @@ class TestScanFile:
         result = scan_file(compiled_ps_rule, clean_sample_file)
         assert result.errors == []
 
-    def test_target_file_in_result(
-        self, compiled_ps_rule: yara.Rules, ps_sample_file: Path
-    ):
+    def test_target_file_in_result(self, compiled_ps_rule: yara.Rules, ps_sample_file: Path):
         result = scan_file(compiled_ps_rule, ps_sample_file)
         assert result.target_file.endswith(ps_sample_file.name)
 
-    def test_to_dict_is_serialisable(
-        self, compiled_ps_rule: yara.Rules, ps_sample_file: Path
-    ):
+    def test_to_dict_is_serialisable(self, compiled_ps_rule: yara.Rules, ps_sample_file: Path):
         import json
+
         result = scan_file(compiled_ps_rule, ps_sample_file)
         d = result.to_dict()
         serialised = json.dumps(d)  # must not raise
@@ -153,6 +131,7 @@ class TestScanFile:
 # ─────────────────────────────────────────────────────────────────────────────
 #  scan_file — rule_file_map
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestScanFileRuleMap:
     def test_rule_file_map_recorded_in_match(
@@ -171,10 +150,9 @@ class TestScanFileRuleMap:
 #  scan_directory
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestScanDirectory:
-    def test_scans_multiple_files(
-        self, compiled_multi_rules: yara.Rules, multi_sample_dir: Path
-    ):
+    def test_scans_multiple_files(self, compiled_multi_rules: yara.Rules, multi_sample_dir: Path):
         summary = scan_directory(compiled_multi_rules, multi_sample_dir)
         assert summary.total_files() >= 2
 
@@ -222,6 +200,7 @@ class TestScanDirectory:
         self, compiled_multi_rules: yara.Rules, multi_sample_dir: Path
     ):
         import json
+
         summary = scan_directory(compiled_multi_rules, multi_sample_dir)
         d = summary.to_dict()
         serialised = json.dumps(d)

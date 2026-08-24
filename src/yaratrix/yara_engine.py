@@ -11,11 +11,10 @@ Responsibilities:
 from __future__ import annotations
 
 import logging
-import os
 import time
-from datetime import datetime, timezone
+from collections.abc import Callable
+from datetime import UTC, datetime
 from pathlib import Path
-from typing import Callable
 
 import yara
 
@@ -36,11 +35,27 @@ MAX_MATCH_DATA_BYTES = 128
 # Feel free to tune this set.
 SKIP_EXTENSIONS: frozenset[str] = frozenset(
     {
-        ".zip", ".tar", ".gz", ".bz2", ".7z", ".rar",
-        ".png", ".jpg", ".jpeg", ".gif", ".bmp", ".ico", ".svg",
-        ".mp3", ".mp4", ".avi", ".mov", ".mkv",
+        ".zip",
+        ".tar",
+        ".gz",
+        ".bz2",
+        ".7z",
+        ".rar",
+        ".png",
+        ".jpg",
+        ".jpeg",
+        ".gif",
+        ".bmp",
+        ".ico",
+        ".svg",
+        ".mp3",
+        ".mp4",
+        ".avi",
+        ".mov",
+        ".mkv",
         ".pdf",
-        ".pyc", ".pyd",
+        ".pyc",
+        ".pyd",
     }
 )
 
@@ -113,7 +128,7 @@ def scan_file(
     """
     target_path = Path(target).resolve()
     rule_file_map = rule_file_map or {}
-    scan_time = datetime.now(tz=timezone.utc)
+    scan_time = datetime.now(tz=UTC)
     errors: list[str] = []
     matches: list[RuleMatch] = []
 
@@ -128,15 +143,14 @@ def scan_file(
     else:
         try:
             import sys
+
             path_str = str(target_path)
             # On Windows, use extended path prefix to handle special chars (e.g. & in dir name)
             if sys.platform == "win32" and not path_str.startswith("\\\\?\\"):
                 path_str = "\\\\?\\" + path_str
             with open(path_str, "rb") as fh:
                 file_bytes = fh.read()
-            raw_matches: list[yara.Match] = compiled_rules.match(
-                data=file_bytes, timeout=timeout
-            )
+            raw_matches: list[yara.Match] = compiled_rules.match(data=file_bytes, timeout=timeout)
             for raw_match in raw_matches:
                 matches.append(_build_rule_match(raw_match, rule_file_map))
         except yara.TimeoutError:
@@ -204,19 +218,20 @@ def scan_directory(
     # Collect candidate files first so we can report progress.
     if recursive:
         all_files = [
-            p for p in root.rglob("*")
-            if p.is_file() and p.suffix.lower() not in SKIP_EXTENSIONS
+            p
+            for p in root.rglob("*")
+            if p.is_file()
+            and p.suffix.lower() not in SKIP_EXTENSIONS
             and not any(part.startswith(".") for part in p.parts)
         ]
     else:
         all_files = [
-            p for p in root.iterdir()
-            if p.is_file() and p.suffix.lower() not in SKIP_EXTENSIONS
+            p for p in root.iterdir() if p.is_file() and p.suffix.lower() not in SKIP_EXTENSIONS
         ]
 
     all_files.sort()
     total = len(all_files)
-    scan_time = datetime.now(tz=timezone.utc)
+    scan_time = datetime.now(tz=UTC)
     results: list[ScanResult] = []
 
     logger.info("Starting directory scan: %s (%d file(s))", root, total)

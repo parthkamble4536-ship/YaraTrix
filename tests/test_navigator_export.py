@@ -4,18 +4,15 @@ Tests for yaratrix.navigator_export — Navigator layer generation.
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
-from unittest.mock import MagicMock
-
-from yaratrix.attack_client import TechniqueInfo, MitigationInfo
+from yaratrix.attack_client import TechniqueInfo
 from yaratrix.mapper import MappingResult, TechniqueMapping
 from yaratrix.models import Severity
 from yaratrix.navigator_export import build_navigator_layer, export_navigator_layer
 
-
 # ─────────────────────────────────────────────────────────────────────────────
 #  Helpers
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 def _make_technique(technique_id: str, tactics: list[str]) -> TechniqueInfo:
     return TechniqueInfo(
@@ -62,6 +59,7 @@ def _make_mapping(
 # ─────────────────────────────────────────────────────────────────────────────
 #  build_navigator_layer
 # ─────────────────────────────────────────────────────────────────────────────
+
 
 class TestBuildNavigatorLayer:
     def test_returns_dict(self):
@@ -124,6 +122,7 @@ class TestBuildNavigatorLayer:
 
     def test_layer_is_json_serialisable(self):
         import json
+
         mapping = _make_mapping(["T1059.001"], [Severity.HIGH], ["execution"])
         layer = build_navigator_layer([mapping])
         serialised = json.dumps(layer)
@@ -150,6 +149,7 @@ class TestBuildNavigatorLayer:
 #  export_navigator_layer — file writing
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class TestExportNavigatorLayer:
     def test_writes_json_file(self, tmp_path):
         mapping = _make_mapping(["T1059.001"], [Severity.HIGH], ["execution"])
@@ -159,6 +159,7 @@ class TestExportNavigatorLayer:
 
     def test_written_json_is_valid(self, tmp_path):
         import json
+
         mapping = _make_mapping(["T1059.001"], [Severity.HIGH], ["execution"])
         out_path = tmp_path / "layer.json"
         export_navigator_layer([mapping], out_path)

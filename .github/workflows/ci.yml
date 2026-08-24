@@ -26,8 +26,13 @@ jobs:
         with:
           enable-cache: true
 
+      - name: Install yara system dependency
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends libyara-dev
+
       - name: Install dependencies
-        run: uv sync --all-extras
+        run: uv sync --dev
 
       - name: Run ruff linter
         run: uv run ruff check src/ tests/
@@ -39,7 +44,7 @@ jobs:
   #  Tests
   # ──────────────────────────────────────────────────────────────────────────
   test:
-    name: Tests (Python ${{ matrix.python-version }})
+    name: Tests (Python ${{ matrix.python-version }}, ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
@@ -60,21 +65,18 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install dependencies
-        run: uv sync --all-extras
-
-      - name: Install yara-python system deps (Linux)
+      - name: Install yara system dependency (Linux)
         if: runner.os == 'Linux'
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y libyara-dev
+          sudo apt-get install -y --no-install-recommends libyara-dev
+
+      - name: Install dependencies
+        run: uv sync --dev
 
       - name: Run tests with coverage
         run: |
-          uv run pytest tests/ -v --tb=short \
-            --cov=src/yaratrix \
-            --cov-report=xml \
-            --cov-report=term-missing
+          uv run pytest tests/ -v --tb=short --cov=src/yaratrix --cov-report=xml --cov-report=term-missing
 
       - name: Upload coverage report
         uses: codecov/codecov-action@v5
@@ -103,13 +105,13 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Install yara-python system deps
+      - name: Install yara system dependency
         run: |
           sudo apt-get update -qq
-          sudo apt-get install -y libyara-dev
+          sudo apt-get install -y --no-install-recommends libyara-dev
 
       - name: Install dependencies
-        run: uv sync --all-extras
+        run: uv sync --dev
 
       - name: Build distribution
         run: uv build

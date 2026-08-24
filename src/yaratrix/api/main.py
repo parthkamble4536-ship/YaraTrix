@@ -19,16 +19,15 @@ Design principles:
 from __future__ import annotations
 
 import logging
-import sys
 import tempfile
 from contextlib import asynccontextmanager
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, Response
+from fastapi.responses import Response
 
 from yaratrix import __version__
 from yaratrix.attack_client import AttackClient, get_default_client
@@ -54,6 +53,7 @@ MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
 #  App state (loaded once at startup)
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 class _AppState:
     loader: RuleLoaderResult | None = None
     attack_client: AttackClient | None = None
@@ -68,7 +68,7 @@ _state = _AppState()
 async def lifespan(app: FastAPI):
     """Load rules and STIX data once at startup."""
     logger.info("YaraTrix API starting up…")
-    _state.startup_time = datetime.now(tz=timezone.utc).isoformat()
+    _state.startup_time = datetime.now(tz=UTC).isoformat()
 
     # Load YARA rules
     try:
@@ -120,6 +120,7 @@ app.add_middleware(
 #  Helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _require_rules() -> RuleLoaderResult:
     if _state.loader is None or _state.loader.compiled is None:
         raise HTTPException(
@@ -160,6 +161,7 @@ async def _read_upload_to_temp(file: UploadFile) -> Path:
 #  Endpoints
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @app.get(
     "/health",
     summary="Health check",
@@ -198,14 +200,16 @@ async def list_rules() -> dict[str, Any]:
     rules = []
     for rule in loader.compiled:
         meta = rule.meta or {}
-        rules.append({
-            "name": rule.identifier,
-            "mitre_technique": meta.get("mitre_technique", ""),
-            "mitre_tactic": meta.get("mitre_tactic", ""),
-            "severity": meta.get("severity", ""),
-            "description": meta.get("description", ""),
-            "tags": list(rule.tags),
-        })
+        rules.append(
+            {
+                "name": rule.identifier,
+                "mitre_technique": meta.get("mitre_technique", ""),
+                "mitre_tactic": meta.get("mitre_tactic", ""),
+                "severity": meta.get("severity", ""),
+                "description": meta.get("description", ""),
+                "tags": list(rule.tags),
+            }
+        )
 
     return {
         "count": len(rules),
@@ -323,6 +327,7 @@ async def export_navigator(
         )
 
         import json
+
         layer_json = json.dumps(layer, indent=2, ensure_ascii=False)
         safe_name = "".join(c if c.isalnum() or c in "-_." else "_" for c in original_name)
         filename = f"yaratrix_{safe_name}_navigator.json"

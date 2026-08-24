@@ -15,19 +15,18 @@ Run:  uv run yaratrix --help
 from __future__ import annotations
 
 import json
-import os
 import sys
 
 # Force UTF-8 output on Windows to support rich's Unicode characters (arrows, etc.)
 if sys.platform == "win32":
     import io
+
     if hasattr(sys.stdout, "buffer"):
         sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
     if hasattr(sys.stderr, "buffer"):
         sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 from pathlib import Path
-from typing import Any, Optional
 
 
 def _safe_write(path: Path, text: str) -> None:
@@ -38,6 +37,7 @@ def _safe_write(path: Path, text: str) -> None:
         path_str = "\\\\?\\" + path_str
     with open(path_str, "w", encoding="utf-8") as f:
         f.write(text)
+
 
 import typer
 import yara
@@ -107,7 +107,7 @@ def version_callback(value: bool) -> None:
 # ─────────────────────────────────────────────────────────────────────────────
 @app.callback()
 def main(
-    version: Optional[bool] = typer.Option(
+    version: bool | None = typer.Option(
         None,
         "--version",
         "-v",
@@ -131,7 +131,7 @@ def scan(
         "-r",
         help="Directory containing .yar rule files.",
     ),
-    output_json: Optional[Path] = typer.Option(
+    output_json: Path | None = typer.Option(
         None, "--output", "-o", help="Save JSON results to this file."
     ),
     no_mitre: bool = typer.Option(
@@ -223,8 +223,12 @@ def scan(
         f"{len(result.matches)} match(es) | "
         f"Techniques: [cyan]{', '.join(result.matched_techniques()) or 'none'}[/cyan] | "
         f"Tactics: [cyan]{', '.join(result.matched_tactics()) or 'none'}[/cyan] | "
-        + (f"Threat Level: [{threat_color}]{mapping.threat_level.upper()}[/{threat_color}] | "
-           f"Confidence: {mapping.confidence_score:.0%}" if mapping else "")
+        + (
+            f"Threat Level: [{threat_color}]{mapping.threat_level.upper()}[/{threat_color}] | "
+            f"Confidence: {mapping.confidence_score:.0%}"
+            if mapping
+            else ""
+        )
         + f" | Duration: {result.duration_ms:.1f}ms"
     )
 
@@ -249,19 +253,17 @@ def scan_dir(
         "-r",
         help="Directory containing .yar rule files.",
     ),
-    output_json: Optional[Path] = typer.Option(
+    output_json: Path | None = typer.Option(
         None, "--output", "-o", help="Save JSON results to this file."
     ),
-    navigator_out: Optional[Path] = typer.Option(
+    navigator_out: Path | None = typer.Option(
         None, "--navigator", "-n", help="Save MITRE Navigator layer JSON to this file."
     ),
     no_mitre: bool = typer.Option(
         False, "--no-mitre", help="Skip MITRE ATT&CK enrichment (faster)."
     ),
     strict: bool = typer.Option(False, "--strict"),
-    no_recursive: bool = typer.Option(
-        False, "--no-recursive", help="Only scan top-level files."
-    ),
+    no_recursive: bool = typer.Option(False, "--no-recursive", help="Only scan top-level files."),
 ) -> None:
     """Scan an [bold]entire directory[/bold] recursively against loaded YARA rules."""
 
@@ -527,10 +529,14 @@ def list_rules(
         )
 
     console.print(table)
-    console.print(f"\n[bold]{count}[/bold] rule(s) loaded from [dim]{len(loader.filepaths)}[/dim] file(s)")
+    console.print(
+        f"\n[bold]{count}[/bold] rule(s) loaded from [dim]{len(loader.filepaths)}[/dim] file(s)"
+    )
 
     if loader.errors:
-        console.print(f"\n[yellow]! {len(loader.errors)} rule(s) have meta validation issues:[/yellow]")
+        console.print(
+            f"\n[yellow]! {len(loader.errors)} rule(s) have meta validation issues:[/yellow]"
+        )
         for err in loader.errors:
             console.print(f"  [dim]{err}[/dim]")
 
@@ -539,9 +545,11 @@ def list_rules(
 #  Shared display helpers
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 def _print_mapping_panel(mapping) -> None:
     """Print a rich panel showing the ATT&CK mapping result for one file."""
     from pathlib import Path as _Path
+
     file_name = _Path(mapping.target_file).name
     threat_color = _threat_level_color(mapping.threat_level)
 
@@ -590,16 +598,20 @@ def _print_mapping_panel(mapping) -> None:
 #  generate-report command
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @app.command(name="generate-report")
 def generate_report(
     target: Path = typer.Argument(..., help="File or directory to scan."),
     rules_dir: Path = typer.Option(
-        DEFAULT_RULES_DIR, "--rules-dir", "-r",
+        DEFAULT_RULES_DIR,
+        "--rules-dir",
+        "-r",
         help="Directory containing .yar rule files.",
     ),
     output: Path = typer.Option(
         Path("yaratrix_report.html"),
-        "--output", "-o",
+        "--output",
+        "-o",
         help="Output path for the HTML report.",
     ),
     no_mitre: bool = typer.Option(False, "--no-mitre", help="Skip ATT&CK enrichment."),
@@ -633,6 +645,7 @@ def generate_report(
     if target.is_dir():
         with console.status("[bold green]Scanning directory…"):
             from yaratrix.yara_engine import scan_directory as _scan_dir
+
             summary = _scan_dir(loader.compiled, target, rule_file_map=loader.filepaths)
             scan_results = summary.results
             report_title = target.name
@@ -671,6 +684,7 @@ def generate_report(
 #  serve command
 # ─────────────────────────────────────────────────────────────────────────────
 
+
 @app.command(name="serve")
 def serve(
     host: str = typer.Option("127.0.0.1", "--host", help="Host to bind to."),
@@ -680,6 +694,7 @@ def serve(
 ) -> None:
     """Launch the [bold]YaraTrix REST API[/bold] server."""
     import uvicorn
+
     console.print(
         Panel(
             f"[bold]YaraTrix API[/bold] starting on [cyan]http://{host}:{port}[/cyan]\n"

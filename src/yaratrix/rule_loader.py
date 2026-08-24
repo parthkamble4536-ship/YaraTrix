@@ -24,13 +24,12 @@ REQUIRED_META_FIELDS: frozenset[str] = frozenset(
     {"mitre_technique", "mitre_tactic", "severity", "description"}
 )
 
-VALID_SEVERITIES: frozenset[str] = frozenset(
-    {"critical", "high", "medium", "low", "info"}
-)
+VALID_SEVERITIES: frozenset[str] = frozenset({"critical", "high", "medium", "low", "info"})
 
 
 class RuleValidationError(NamedTuple):
     """Represents a single validation failure for a rule file."""
+
     rule_file: str
     rule_name: str
     issues: list[str]
@@ -42,10 +41,11 @@ class RuleValidationError(NamedTuple):
 
 class RuleLoaderResult(NamedTuple):
     """Output of load_rules()."""
-    compiled: yara.Rules | None      # Compiled YARA rules (None if all fail)
-    filepaths: dict[str, str]        # namespace -> filepath mapping used
+
+    compiled: yara.Rules | None  # Compiled YARA rules (None if all fail)
+    filepaths: dict[str, str]  # namespace -> filepath mapping used
     errors: list[RuleValidationError]  # Validation failures
-    warnings: list[str]              # Non-fatal warnings
+    warnings: list[str]  # Non-fatal warnings
 
 
 def discover_rule_files(rules_dir: str | Path) -> list[Path]:
@@ -67,9 +67,7 @@ def discover_rule_files(rules_dir: str | Path) -> list[Path]:
     if not root.is_dir():
         raise NotADirectoryError(f"Expected a directory, got: {root}")
 
-    found = sorted(
-        p for p in root.rglob("*") if p.suffix.lower() in {".yar", ".yara"}
-    )
+    found = sorted(p for p in root.rglob("*") if p.suffix.lower() in {".yar", ".yara"})
     logger.debug("Discovered %d rule file(s) under %s", len(found), root)
     return found
 
