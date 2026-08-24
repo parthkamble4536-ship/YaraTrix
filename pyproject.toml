@@ -1,7 +1,7 @@
 [project]
 name = "yaratrix"
 version = "0.1.0"
-description = "Add your description here"
+description = "YARA-to-MITRE ATT&CK Mapping Engine"
 readme = "README.md"
 authors = [
     { name = "parth.kamble", email = "parth.kamble4536@gmail.com" }
@@ -12,12 +12,21 @@ dependencies = [
     "httpx>=0.28.1",
     "jinja2>=3.1.6",
     "mitreattack-python>=6.2.0",
-    "pytest>=9.1.1",
     "python-multipart>=0.0.32",
     "rich>=15.0.0",
     "typer>=0.27.1",
     "uvicorn>=0.52.4",
     "yara-python>=4.5.4",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=9.1.1",
+    "pytest-cov>=6.0.0",
+    "pytest-asyncio>=0.24.0",
+    "httpx>=0.28.1",
+    "ruff>=0.9.0",
+    "black>=25.0.0",
 ]
 
 [project.scripts]
@@ -26,3 +35,39 @@ yaratrix = "yaratrix.cli.main:run_cli"
 [build-system]
 requires = ["uv_build>=0.12.5,<0.13.0"]
 build-backend = "uv_build"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = "-v --tb=short"
+
+[tool.coverage.run]
+source = ["src/yaratrix"]
+omit = ["*/templates/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+show_missing = true
+skip_covered = false
+fail_under = 60
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP"]
+ignore = ["E501"]
+
+[tool.black]
+line-length = 100
+target-version = ["py311"]
+
+[dependency-groups]
+dev = [
+    "black>=26.5.1",
+    "pytest-asyncio>=1.4.0",
+    "pytest-cov>=7.1.0",
+    "ruff>=0.16.4",
+]
