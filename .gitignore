@@ -56,8 +56,12 @@ coverage.xml
 *.swp
 *.swo
 
-# Project data
-enterprise-attack.json
-stix-bundle.json
-*.html
-*.json
+# Project data — large STIX bundles (do not commit)
+data/*.json
+data/*.zip
+
+# Scan outputs (ephemeral)
+outputs/
+
+# HTML reports (generated)
+reports/*.html
