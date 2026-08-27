@@ -25,7 +25,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
-from fastapi import FastAPI, File, HTTPException, Query, UploadFile, status
+from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
 
@@ -36,6 +36,9 @@ from yaratrix.navigator_export import build_navigator_layer
 from yaratrix.report_generator import render_report
 from yaratrix.rule_loader import RuleLoaderResult, load_rules
 from yaratrix.yara_engine import scan_file
+from sqlalchemy.orm import Session
+from sqlalchemy import text
+from yaratrix.db.session import get_db
 
 logger = logging.getLogger(__name__)
 
@@ -168,13 +171,20 @@ async def _read_upload_to_temp(file: UploadFile) -> Path:
     tags=["System"],
     response_model=dict,
 )
-async def health() -> dict[str, Any]:
+async def health(db: Session = Depends(get_db)) -> dict[str, Any]:
     """
-    Returns the API health status, version, rule count, and STIX availability.
+    Returns the API health status, version, rule count, STIX availability, and DB connection status.
     """
     rule_count = 0
     if _state.loader and _state.loader.compiled:
         rule_count = sum(1 for _ in _state.loader.compiled)
+
+    db_status = "connected"
+    try:
+        db.execute(text("SELECT 1"))
+    except Exception as e:
+        logger.error(f"Database connection failed: {e}")
+        db_status = "disconnected"
 
     return {
         "status": "healthy",
@@ -182,6 +192,7 @@ async def health() -> dict[str, Any]:
         "startup_time": _state.startup_time,
         "rules_loaded": rule_count,
         "stix_available": _state.attack_client is not None,
+        "db_status": db_status,
         "rules_dir": _state.rules_dir,
         "max_file_size_mb": MAX_FILE_SIZE_MB,
     }
