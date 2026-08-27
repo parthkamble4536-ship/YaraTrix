@@ -8,12 +8,15 @@ authors = [
 ]
 requires-python = ">=3.11"
 dependencies = [
+    "alembic>=1.19.1",
     "fastapi>=0.141.1",
     "httpx>=0.28.1",
     "jinja2>=3.1.6",
     "mitreattack-python>=6.2.0",
+    "psycopg2-binary>=2.9.12",
     "python-multipart>=0.0.32",
     "rich>=15.0.0",
+    "sqlalchemy>=2.0.52",
     "typer>=0.27.1",
     "uvicorn>=0.52.4",
     "yara-python>=4.5.4",
