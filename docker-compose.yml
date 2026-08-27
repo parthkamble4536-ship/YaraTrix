@@ -1,26 +1,19 @@
 version: '3.8'
 
-services:
-  api:
-    build: .
-    ports:
-      - "8000:8000"
-    environment:
-      - DATABASE_URL=postgresql://yaratrix:yaratrix_pass@db:5432/yaratrix_db
-    depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - ./rules:/app/rules
-      - ./data:/app/data
-      - ./reports:/app/reports
+# Shared environment variables for all services
+x-common-env: &common-env
+  DATABASE_URL: postgresql://yaratrix:yaratrix_pass@db:5432/yaratrix_db
+  CELERY_BROKER_URL: redis://redis:6379/0
+  CELERY_RESULT_BACKEND: redis://redis:6379/0
 
+services:
+  # ── PostgreSQL Database ────────────────────────────────────────────────────
   db:
     image: postgres:15-alpine
     environment:
-      - POSTGRES_USER=yaratrix
-      - POSTGRES_PASSWORD=yaratrix_pass
-      - POSTGRES_DB=yaratrix_db
+      POSTGRES_USER: yaratrix
+      POSTGRES_PASSWORD: yaratrix_pass
+      POSTGRES_DB: yaratrix_db
     ports:
       - "5432:5432"
     volumes:
@@ -31,5 +24,51 @@ services:
       timeout: 5s
       retries: 5
 
+  # ── Redis (Message Broker & Result Backend) ────────────────────────────────
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+
+  # ── FastAPI Application ────────────────────────────────────────────────────
+  api:
+    build: .
+    ports:
+      - "8000:8000"
+    environment:
+      <<: *common-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./rules:/app/rules
+      - ./data:/app/data
+      - ./reports:/app/reports
+
+  # ── Celery Worker (The Kitchen Chefs) ─────────────────────────────────────
+  worker:
+    build: .
+    command: celery -A yaratrix.worker.celery_app worker --loglevel=info --concurrency=4
+    environment:
+      <<: *common-env
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ./rules:/app/rules
+      - ./data:/app/data
+
 volumes:
   postgres_data:
+  redis_data:

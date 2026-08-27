@@ -3,11 +3,15 @@ YaraTrix FastAPI Application.
 
 Endpoints:
   GET  /health               Health check + version info
-  POST /scan                 Upload a file and receive a full JSON scan report
+  POST /scan                 Upload a file and receive a full JSON scan report (synchronous)
   GET  /techniques           List ATT&CK technique IDs supported by the local STIX bundle
   GET  /rules                List all loaded YARA rules
   POST /export/navigator     Upload a file and receive a Navigator layer JSON
   POST /export/report        Upload a file and receive an HTML report
+
+  [Phase 3 - Async Jobs]
+  POST /jobs/scan            Submit a file for async scanning; returns job_id immediately
+  GET  /jobs/{job_id}        Poll a job's status and retrieve results when complete
 
 Design principles:
   - File size limit enforced (default 50 MB)
@@ -42,6 +46,7 @@ from sqlalchemy import text
 from yaratrix.db.session import get_db
 from yaratrix.db.models import ScanJob, FileArtifact, MatchEvent
 from yaratrix.intelligence import IntelligenceEngine, RuleMatchInput
+from yaratrix.worker.tasks import scan_file_async
 
 logger = logging.getLogger(__name__)
 
@@ -484,3 +489,119 @@ async def export_report(
             tmp_path.unlink()
         except Exception:
             pass
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Phase 3: Async Job Endpoints
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@app.post(
+    "/jobs/scan",
+    summary="Submit a file for async scanning (non-blocking)",
+    tags=["Async Jobs"],
+    status_code=status.HTTP_202_ACCEPTED,
+)
+async def submit_scan_job(
+    file: UploadFile = File(..., description="File to scan (max 50 MB)"),
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Submit a file for asynchronous scanning.
+
+    This endpoint returns **immediately** with a `job_id`. The actual scan
+    runs in a background Celery worker. Poll `GET /jobs/{job_id}` to check
+    progress and retrieve results when the job completes.
+
+    **Use this endpoint for large files or batch workflows.**
+    """
+    _validate_file_size(file)
+    content = await file.read(MAX_FILE_SIZE_BYTES + 1)
+    if len(content) > MAX_FILE_SIZE_BYTES:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail=f"File exceeds maximum size of {MAX_FILE_SIZE_MB} MB.",
+        )
+
+    original_name = file.filename or "upload"
+
+    # Write a ScanJob record immediately so we have an ID to return
+    job = ScanJob(status="pending", target_path=original_name)
+    db.add(job)
+    db.commit()
+    db.refresh(job)
+
+    # Push the scan task to Redis queue (non-blocking)
+    scan_file_async.delay(
+        job_id=job.id,
+        file_bytes_hex=content.hex(),
+        original_filename=original_name,
+    )
+
+    return {
+        "job_id": job.id,
+        "status": "pending",
+        "filename": original_name,
+        "message": f"Scan job submitted. Poll GET /jobs/{job.id} for results.",
+    }
+
+
+@app.get(
+    "/jobs/{job_id}",
+    summary="Get async scan job status and results",
+    tags=["Async Jobs"],
+)
+async def get_job_status(
+    job_id: int,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Retrieve the status and results of an async scan job.
+
+    **Job statuses:**
+    - `pending` — Job is queued, waiting for a worker
+    - `running` — Worker has picked up the job and is scanning
+    - `completed` — Scan is done, results are available
+    - `failed` — Something went wrong during scanning
+    """
+    job = db.query(ScanJob).filter(ScanJob.id == job_id).first()
+    if not job:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"Job {job_id} not found.",
+        )
+
+    response: dict[str, Any] = {
+        "job_id": job.id,
+        "status": job.status,
+        "target": job.target_path,
+        "created_at": job.created_at.isoformat() if job.created_at else None,
+        "completed_at": job.completed_at.isoformat() if job.completed_at else None,
+    }
+
+    # If completed, include artifact + match event details
+    if job.status == "completed":
+        artifacts = db.query(FileArtifact).filter(FileArtifact.job_id == job_id).all()
+        artifact_data = []
+        for artifact in artifacts:
+            events = db.query(MatchEvent).filter(MatchEvent.artifact_id == artifact.id).all()
+            artifact_data.append({
+                "artifact_id": artifact.id,
+                "file_path": artifact.file_path,
+                "file_hash": artifact.file_hash,
+                "file_size": artifact.file_size,
+                "confidence_score": artifact.confidence_score,
+                "match_events": [
+                    {
+                        "rule_name": e.rule_name,
+                        "mitre_techniques": e.mitre_techniques,
+                        "mitre_tactics": e.mitre_tactics,
+                        "severity": e.severity,
+                        "is_false_positive": e.is_false_positive,
+                    }
+                    for e in events
+                ],
+            })
+        response["artifacts"] = artifact_data
+
+    return response
