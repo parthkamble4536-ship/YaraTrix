@@ -18,6 +18,7 @@ Design principles:
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import tempfile
 from contextlib import asynccontextmanager
@@ -39,6 +40,8 @@ from yaratrix.yara_engine import scan_file
 from sqlalchemy.orm import Session
 from sqlalchemy import text
 from yaratrix.db.session import get_db
+from yaratrix.db.models import ScanJob, FileArtifact, MatchEvent
+from yaratrix.intelligence import IntelligenceEngine, RuleMatchInput
 
 logger = logging.getLogger(__name__)
 
@@ -260,6 +263,7 @@ async def list_techniques(
 async def scan_upload(
     file: UploadFile = File(..., description="File to scan (max 50 MB)"),
     enrich: bool = Query(True, description="Enrich results with ATT&CK technique data"),
+    db: Session = Depends(get_db),
 ) -> dict[str, Any]:
     """
     Upload a file, scan it against loaded YARA rules, and return a structured
@@ -269,6 +273,7 @@ async def scan_upload(
     - Matched rules with technique/tactic/severity/strings
     - ATT&CK technique metadata (name, description, mitigations, URL)
     - Confidence score and threat level
+    - Behavioral narrative (Intelligence Engine)
     - Narrative summary
     """
     loader = _require_rules()
@@ -276,19 +281,85 @@ async def scan_upload(
 
     tmp_path = await _read_upload_to_temp(file)
     original_name = file.filename or "upload"
+    file_content = tmp_path.read_bytes()
+    file_hash = hashlib.sha256(file_content).hexdigest()
+    file_size = len(file_content)
+
+    # Create a ScanJob record in the DB
+    job = ScanJob(status="running", target_path=original_name)
+    db.add(job)
+    db.commit()
+    db.refresh(job)
 
     try:
         result = scan_file(loader.compiled, tmp_path, rule_file_map=loader.filepaths)
-        # Restore the original filename in the result for cleaner reporting
         result.target_file = original_name
 
+        # Persist the FileArtifact to DB
+        artifact = FileArtifact(
+            job_id=job.id,
+            file_path=original_name,
+            file_hash=file_hash,
+            file_size=file_size,
+        )
+        db.add(artifact)
+        db.commit()
+        db.refresh(artifact)
+
+        # Run the Intelligence Engine
+        intel_engine = IntelligenceEngine()
+        match_inputs = [
+            RuleMatchInput(
+                rule_name=m.rule,
+                severity=m.meta.get("severity", "medium") if m.meta else "medium",
+                mitre_technique=m.meta.get("mitre_technique", "") if m.meta else "",
+                mitre_tactic=m.meta.get("mitre_tactic", "") if m.meta else "",
+                description=m.meta.get("description", "") if m.meta else "",
+            )
+            for m in result.matches
+        ]
+        intel_report = intel_engine.analyze(match_inputs)
+
+        # Update confidence score on the artifact
+        artifact.confidence_score = intel_report.confidence_score
+        db.commit()
+
+        # Persist each MatchEvent
+        for mi in match_inputs:
+            event = MatchEvent(
+                artifact_id=artifact.id,
+                rule_name=mi.rule_name,
+                mitre_techniques=mi.mitre_technique,
+                mitre_tactics=mi.mitre_tactic,
+                severity=mi.severity,
+                description=mi.description,
+            )
+            db.add(event)
+
+        # Mark job complete
+        job.status = "completed"
+        job.completed_at = datetime.now(tz=UTC)
+        db.commit()
+
+        # Build response
         response: dict[str, Any] = result.to_dict()
+        response["intelligence"] = intel_report.to_dict()
+        response["scan_job_id"] = job.id
+        response["artifact_id"] = artifact.id
 
         if enrich and result.matches and _state.attack_client:
             mapping = map_scan_result(result, client=_state.attack_client)
             response["mitre_mapping"] = mapping.to_dict()
 
         return response
+    except Exception as exc:
+        job.status = "failed"
+        db.commit()
+        logger.error("Scan failed: %s", exc)
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Scan failed: {exc}",
+        )
     finally:
         try:
             tmp_path.unlink()
