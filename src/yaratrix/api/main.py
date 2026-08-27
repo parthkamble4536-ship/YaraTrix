@@ -13,6 +13,12 @@ Endpoints:
   POST /jobs/scan            Submit a file for async scanning; returns job_id immediately
   GET  /jobs/{job_id}        Poll a job's status and retrieve results when complete
 
+  [Phase 4 - Analytics & Feedback]
+  PATCH /events/{event_id}/feedback   Mark a MatchEvent as True or False Positive
+  GET   /analytics/summary            Platform-wide scan and detection statistics
+  GET   /analytics/rules              Per-rule effectiveness metrics (TP/FP rates)
+  GET   /analytics/coverage           MITRE ATT&CK tactic and technique coverage gaps
+
 Design principles:
   - File size limit enforced (default 50 MB)
   - Validation errors return 422 with human-readable messages
@@ -47,6 +53,7 @@ from yaratrix.db.session import get_db
 from yaratrix.db.models import ScanJob, FileArtifact, MatchEvent
 from yaratrix.intelligence import IntelligenceEngine, RuleMatchInput
 from yaratrix.worker.tasks import scan_file_async
+from yaratrix.analytics import AnalyticsEngine
 
 logger = logging.getLogger(__name__)
 
@@ -605,3 +612,113 @@ async def get_job_status(
         response["artifacts"] = artifact_data
 
     return response
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+#  Phase 4: Analytics & Feedback Loop
+# ─────────────────────────────────────────────────────────────────────────────
+
+
+@app.patch(
+    "/events/{event_id}/feedback",
+    summary="Submit analyst feedback on a match event (True/False Positive)",
+    tags=["Analytics"],
+)
+async def submit_event_feedback(
+    event_id: int,
+    is_false_positive: bool,
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Mark a specific `MatchEvent` as a True Positive or False Positive.
+
+    This analyst feedback powers the Rule Effectiveness analytics,
+    helping identify noisy rules that generate too many false alarms.
+
+    - `is_false_positive=true`  — Analyst says this match is NOT real
+    - `is_false_positive=false` — Analyst confirms this IS a real threat
+    """
+    event = db.query(MatchEvent).filter(MatchEvent.id == event_id).first()
+    if not event:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=f"MatchEvent {event_id} not found.",
+        )
+
+    event.is_false_positive = is_false_positive
+    db.commit()
+    db.refresh(event)
+
+    return {
+        "event_id": event.id,
+        "rule_name": event.rule_name,
+        "is_false_positive": event.is_false_positive,
+        "message": "Feedback recorded. Analytics will reflect this update.",
+    }
+
+
+@app.get(
+    "/analytics/summary",
+    summary="Platform-wide detection statistics",
+    tags=["Analytics"],
+)
+async def analytics_summary(
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Returns platform-wide statistics including:
+    - Total scan jobs (pending/completed/failed)
+    - Files scanned, threats detected, clean files
+    - Average confidence score across all threat detections
+    - Top 5 most frequently triggered YARA rules
+    - Total match events and confirmed false positives
+    """
+    engine = AnalyticsEngine()
+    return engine.get_summary(db)
+
+
+@app.get(
+    "/analytics/rules",
+    summary="Per-rule effectiveness metrics",
+    tags=["Analytics"],
+)
+async def analytics_rules(
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Returns per-rule detection quality metrics:
+    - **Total hits**: How many times each rule has fired
+    - **True/False positives**: Based on analyst feedback
+    - **Effectiveness score**: TP / (TP + FP)
+    - **Noise level**: low / medium / high
+
+    Rules with `noise_level: high` are candidates for tuning or removal.
+    """
+    engine = AnalyticsEngine()
+    rules = engine.get_rule_effectiveness(db)
+    return {
+        "total_rules_seen": len(rules),
+        "rules": rules,
+    }
+
+
+@app.get(
+    "/analytics/coverage",
+    summary="MITRE ATT&CK tactic and technique coverage analysis",
+    tags=["Analytics"],
+)
+async def analytics_coverage(
+    db: Session = Depends(get_db),
+) -> dict[str, Any]:
+    """
+    Analyses your YARA ruleset's coverage across the MITRE ATT&CK framework.
+
+    Returns:
+    - **Coverage %**: Percentage of ATT&CK tactics your rules cover
+    - **Covered tactics**: Tactics you can currently detect
+    - **Missing tactics**: Blind spots in your detection capability
+    - **Covered techniques**: All unique technique IDs seen in rules
+    - **Gap advice**: Actionable recommendation on what to add next
+    """
+    engine = AnalyticsEngine()
+    return engine.get_coverage(db)
