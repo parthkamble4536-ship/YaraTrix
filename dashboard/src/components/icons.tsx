@@ -305,3 +305,24 @@ export function RadialGauge({
     </div>
   );
 }
+
+// Download icon (arrow pointing down into a tray)
+export function IconDownload({ size = 20, color = "currentColor", style, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} {...props}>
+      <path d="M10 3v10m0 0l-3.5-3.5M10 13l3.5-3.5" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M3 15v1a1 1 0 001 1h12a1 1 0 001-1v-1" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+// Map/Layer icon (stacked layers)
+export function IconMap({ size = 20, color = "currentColor", style, ...props }: IconProps) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 20 20" fill="none" xmlns="http://www.w3.org/2000/svg" style={style} {...props}>
+      <path d="M10 2L2 6l8 4 8-4-8-4z" stroke={color} strokeWidth="1.5" strokeLinejoin="round" />
+      <path d="M2 10l8 4 8-4" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M2 14l8 4 8-4" stroke={color} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}

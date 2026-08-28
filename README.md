@@ -2,103 +2,312 @@
 
 <div align="center">
 
-![YaraTrix Banner](https://img.shields.io/badge/YaraTrix-YARA%20→%20MITRE%20ATT%26CK-blueviolet?style=for-the-badge&logo=shield&logoColor=white)
+![YaraTrix Banner](https://img.shields.io/badge/YaraTrix-Threat%20Intelligence%20Platform-00f2fe?style=for-the-badge&logo=shield&logoColor=white)
 
-[![CI](https://github.com/parthkamble4536-ship/YaraTrix/actions/workflows/ci.yml/badge.svg)](https://github.com/parthkamble4536-ship/YaraTrix/actions/workflows/ci.yml)
 [![Python](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat&logo=python&logoColor=white)](https://python.org)
+[![Next.js](https://img.shields.io/badge/Next.js-16-000000?style=flat&logo=next.js&logoColor=white)](https://nextjs.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688?style=flat&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Docker](https://img.shields.io/badge/Docker-Compose-2496ED?style=flat&logo=docker&logoColor=white)](https://docker.com)
 [![License](https://img.shields.io/badge/License-MIT-green?style=flat)](LICENSE)
 [![uv](https://img.shields.io/badge/managed%20by-uv-7C3AED?style=flat)](https://github.com/astral-sh/uv)
 [![Ruff](https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json)](https://github.com/astral-sh/ruff)
 
-**Scan files with YARA rules → auto-map every hit to MITRE ATT&CK techniques → generate Navigator heatmaps and premium HTML threat reports.**
+**Enterprise-grade YARA threat analysis platform — scan files with YARA rules, auto-map to MITRE ATT&CK techniques, generate confidence-scored intelligence reports, and visualise coverage through a real-time Next.js SOC dashboard.**
 
-[Features](#features) · [Quick Start](#quick-start) · [CLI Reference](#cli-reference) · [REST API](#rest-api) · [Architecture](#architecture) · [Contributing](#contributing)
+[Features](#-features) · [Dashboard](#-dashboard-showcase) · [Quick Start](#-quick-start) · [Architecture](#-architecture) · [API Reference](#-rest-api) · [Contributing](#-contributing)
 
 </div>
 
 ---
 
-## What is YaraTrix?
+## 🔍 What is YaraTrix?
 
-YaraTrix is a Python-powered **threat analysis engine** that bridges the gap between raw YARA signature matching and structured threat intelligence. It:
+YaraTrix is a **full-stack threat intelligence platform** that bridges the gap between raw YARA signature matching and actionable threat intelligence. Built for SOC analysts, malware researchers, and security engineers, it provides:
 
-1. **Loads** YARA rules from a directory, compiling them once for speed
-2. **Scans** files or entire directory trees, collecting all matches with offsets and strings
-3. **Maps** every rule match to one or more MITRE ATT&CK techniques using the live STIX bundle
-4. **Exports** results as:
-   - A structured **JSON** report (for pipelines)
-   - An **ATT&CK Navigator layer** (`.json`) — importable at [mitre-attack.github.io/attack-navigator](https://mitre-attack.github.io/attack-navigator/)
-   - A **premium HTML threat report** with kill-chain heatmap, narrative, and technique breakdown
-5. **Serves** a **FastAPI REST API** for integration with SIEMs, EDR platforms, or CI/CD pipelines
+1. **YARA Scanning Engine** — Loads and compiles YARA rules, scans files/directories with match offsets and string hits
+2. **MITRE ATT&CK Mapping** — Auto-maps every rule match to ATT&CK techniques using live STIX v2.1 data
+3. **Intelligence Engine** — Calculates confidence scores (0–100%), classifies threat severity, generates behavioral narratives
+4. **Next.js SOC Dashboard** — Real-time command center with radial gauges, severity distribution, ATT&CK heatmaps, and rule effectiveness analytics
+5. **Export Pipeline** — ATT&CK Navigator layers (`.json`) and premium HTML threat reports with kill-chain heatmaps
+6. **Distributed Processing** — Celery + Redis async job queue for scanning at scale
+7. **Docker Orchestration** — One-command deployment with PostgreSQL, Redis, API, and Celery workers
 
 ---
 
-## Features
+## ✨ Features
 
 | Feature | Details |
 |---|---|
-| 🔍 **YARA Scanning** | Recursive directory scanning with progress callbacks |
-| 🗺️ **ATT&CK Mapping** | Auto-maps technique IDs from rule `meta:` fields to live STIX v2.1 data |
-| 📊 **Navigator Export** | Heatmaps coloured by severity (low → critical) |
-| 📄 **HTML Reports** | Premium dark-mode report with kill-chain heatmap, narratives, mitigations |
-| ⚡ **FastAPI Server** | REST API with file upload, JSON/Navigator/HTML export endpoints |
-| 🖥️ **Rich CLI** | Beautiful terminal UI with `scan`, `report`, `serve`, and `version` commands |
-| ✅ **96 Tests** | Full pytest suite, no STIX bundle required for testing |
-| 🔄 **CI/CD** | GitHub Actions: lint + test matrix (Python 3.11/3.12 × Linux/Windows) |
+| 🔍 **YARA Scanning** | Recursive directory scanning with progress callbacks and match metadata |
+| 🧠 **Intelligence Engine** | Confidence scoring (0–100%), severity classification, behavioral narrative generation |
+| 🗺️ **ATT&CK Mapping** | Auto-maps technique IDs from rule `meta:` fields to live STIX v2.1 bundle |
+| 📊 **SOC Dashboard** | Next.js 16 dark-mode command center with real-time analytics and radial gauges |
+| 📈 **Detection Analytics** | ATT&CK coverage heatmap, tactic gap analysis, rule effectiveness scoreboard |
+| 📄 **HTML Reports** | Premium dark-mode report with kill-chain heatmap, narratives, and mitigations |
+| 🗺️ **Navigator Export** | Heatmaps coloured by severity — importable at [ATT&CK Navigator](https://mitre-attack.github.io/attack-navigator/) |
+| ⚡ **FastAPI REST API** | File upload, scan, export, analytics endpoints with Swagger UI |
+| 🔄 **Async Processing** | Celery + Redis distributed task queue for non-blocking batch scanning |
+| 🐳 **Docker Compose** | One-command deployment: API + Dashboard + PostgreSQL + Redis + Celery |
+| 🖥️ **Rich CLI** | Terminal UI with `scan`, `generate-report`, `serve`, and `version` commands |
+| ✅ **Test Suite** | Comprehensive pytest suite, no STIX bundle required for testing |
 
 ---
 
-## Quick Start
+## 🖥️ Dashboard Showcase
+
+### SOC Command Center
+Real-time threat visibility across all scanned artifacts — total scan jobs, threats detected, average confidence, and platform health gauges.
+
+![Dashboard Overview](screenshots/1.png)
+
+---
+
+### Threat Detection — LockBit Ransomware (85% Confidence)
+Intelligence report for a scanned ransomware sample showing **Critical severity**, behavioral narrative, and MITRE ATT&CK technique mapping (T1486 — Data Encrypted for Impact).
+
+![Threat Detection - Intelligence Report](screenshots/7.png)
+
+---
+
+### Export Reports & Matched YARA Rules
+Download HTML threat reports and ATT&CK Navigator layers directly from the dashboard. Expandable rule match table shows severity, technique ID, and tactic for each triggered rule.
+
+![Export Reports & Rule Matches](screenshots/8.png)
+
+---
+
+### Multi-Rule Detection — Mimikatz Credential Dump (100% Confidence)
+Scanning a credential harvesting tool triggers 3 YARA rules across the **Credential Access** tactic, producing a 100% confidence critical alert with an automated behavioral narrative.
+
+![Mimikatz Detection](screenshots/10.png)
+
+---
+
+### Multi-Tactic Detection — Obfuscated PowerShell (100% Confidence)
+Obfuscated script analysis detecting **Execution** and **Defense Evasion** tactics simultaneously, with mixed HIGH/MEDIUM severity distribution across T1059.001 and T1027.
+
+![Obfuscated PowerShell Detection](screenshots/13.png)
+
+---
+
+### Clean File Verification
+Scanning a benign file correctly returns **0% confidence** with a "CLEAN" verdict — demonstrating zero false positives across the entire YARA ruleset.
+
+![Clean File Scan](screenshots/15.png)
+
+---
+
+### Detection Quality Analytics
+ATT&CK coverage heatmap showing 5 of 12 tactics covered, with gap analysis recommending rules for Initial Access, Lateral Movement, Collection, and more.
+
+![Analytics - ATT&CK Coverage](screenshots/4.png)
+
+---
+
+### Rule Effectiveness Scoreboard
+All 10 YARA rules achieving **100% effectiveness** with zero false positives across all scan jobs, sorted by total hit count.
+
+![Analytics - Rule Scoreboard](screenshots/5.png)
+
+---
+
+### Async Distributed Job Queue
+Submit files to the Celery worker queue for non-blocking batch processing with real-time status polling.
+
+![Async Jobs](screenshots/3.png)
+
+---
+
+### Docker Orchestration
+Full microservices stack deployed with `docker-compose up -d` — API, PostgreSQL, Redis, and Celery worker containers all running and healthy.
+
+![Docker Build](screenshots/18.png)
+![Docker Containers Running](screenshots/19.png)
+
+---
+
+## 🏗️ Architecture
+
+### System Architecture
+
+```mermaid
+graph TB
+    subgraph Client["🌐 Client Layer"]
+        Browser["Next.js Dashboard<br/>:3000"]
+        CLI["CLI / cURL"]
+    end
+
+    subgraph API["⚡ API Layer"]
+        FastAPI["FastAPI Server<br/>:8000"]
+    end
+
+    subgraph Engine["🧠 Core Engine"]
+        YaraEngine["YARA Engine<br/>Rule Compilation & Scanning"]
+        Mapper["ATT&CK Mapper<br/>STIX v2.1 Enrichment"]
+        Intel["Intelligence Engine<br/>Confidence Scoring"]
+        Report["Report Generator<br/>HTML & Navigator Export"]
+    end
+
+    subgraph Infra["🐳 Infrastructure"]
+        Redis["Redis 7<br/>Message Broker"]
+        Celery["Celery Worker<br/>Async Processing"]
+        Postgres["PostgreSQL 15<br/>Scan History"]
+    end
+
+    subgraph Data["📁 Data Sources"]
+        Rules["YARA Rules<br/>10+ detection rules"]
+        STIX["MITRE ATT&CK<br/>STIX Bundle"]
+    end
+
+    Browser --> FastAPI
+    CLI --> FastAPI
+    FastAPI --> YaraEngine
+    FastAPI --> Redis
+    Redis --> Celery
+    Celery --> YaraEngine
+    YaraEngine --> Mapper
+    Mapper --> Intel
+    Intel --> Report
+    Mapper --> STIX
+    YaraEngine --> Rules
+    FastAPI --> Postgres
+    Celery --> Postgres
+```
+
+### Data Flow Pipeline
+
+```mermaid
+flowchart LR
+    A["📄 File Upload"] --> B["🔍 YARA Engine"]
+    B --> C{"Rules Matched?"}
+    C -->|Yes| D["🗺️ ATT&CK Mapper"]
+    C -->|No| H["✅ CLEAN Verdict"]
+    D --> E["🧠 Intelligence Engine"]
+    E --> F["📊 Confidence Score<br/>Severity Classification<br/>Behavioral Narrative"]
+    F --> G["📤 Output"]
+    G --> G1["JSON Response"]
+    G --> G2["HTML Report"]
+    G --> G3["Navigator Layer"]
+    G --> G4["Dashboard View"]
+```
+
+---
+
+## 🚀 Quick Start
 
 ### Prerequisites
 
-- Python 3.11+
+- **Python 3.11+**
+- **Node.js 18+** (for the dashboard)
 - [`uv`](https://github.com/astral-sh/uv) (recommended) or `pip`
 - On Linux: `sudo apt-get install libyara-dev`
 
-### Install
+### Option 1: Local Development
 
 ```bash
-# Clone the repo
+# Clone the repository
 git clone https://github.com/parthkamble4536-ship/YaraTrix.git
 cd YaraTrix
 
-# Install with uv (recommended)
+# Install Python dependencies
 uv sync
 
-# Or with pip
-pip install -e .
-```
-
-### Download MITRE ATT&CK data
-
-```bash
+# Download MITRE ATT&CK STIX bundle (~46 MB)
 uv run python scripts/download_mitre_data.py
+
+# Start the FastAPI backend
+uv run uvicorn yaratrix.api.main:app --reload --port 8000
+
+# In a new terminal — install and start the dashboard
+cd dashboard
+npm install
+npm run dev
+
+# Open http://localhost:3000 in your browser
 ```
 
-This downloads the STIX bundle (~46 MB) to `data/enterprise-attack.json`.
-
-### Run your first scan
+### Option 2: Docker (Recommended for Production)
 
 ```bash
-# Scan a file
-uv run yaratrix scan /path/to/suspicious.ps1
+# Clone the repository
+git clone https://github.com/parthkamble4536-ship/YaraTrix.git
+cd YaraTrix
 
-# Scan a directory
-uv run yaratrix scan /path/to/samples/
+# Build and start all services
+docker-compose up -d --build
 
-# Generate an HTML report
-uv run yaratrix generate-report /path/to/suspicious.ps1 --output report.html
+# Verify all containers are running
+docker-compose ps
 
-# Export an ATT&CK Navigator layer
-uv run yaratrix scan /path/to/samples/ --navigator --output layer.json
+# Open http://localhost:8000/docs for API docs
+# Dashboard available at http://localhost:3000 (if running separately)
+```
+
+Docker spins up **4 containers**: FastAPI API, PostgreSQL 15, Redis 7, and Celery Worker.
+
+```bash
+# Stop all services
+docker-compose down
+
+# View logs
+docker-compose logs -f api
 ```
 
 ---
 
-## YARA Rule Format
+## 📁 Project Structure
 
-YaraTrix requires rules to have structured `meta:` fields:
+```
+YaraTrix/
+├── src/yaratrix/                # Core Python package
+│   ├── yara_engine.py           # YARA rule compilation & file scanning
+│   ├── rule_loader.py           # Rule discovery & recursive loading
+│   ├── attack_client.py         # MITRE ATT&CK STIX client & caching
+│   ├── mapper.py                # Rule match → ATT&CK technique mapping
+│   ├── navigator_export.py      # ATT&CK Navigator layer generation
+│   ├── report_generator.py      # Jinja2 HTML report rendering
+│   ├── models.py                # Pydantic-like dataclasses
+│   ├── intelligence/
+│   │   └── engine.py            # Confidence scoring & behavioral profiling
+│   ├── analytics/
+│   │   └── engine.py            # Rule effectiveness & ATT&CK coverage analysis
+│   ├── worker/
+│   │   ├── celery_app.py        # Celery configuration
+│   │   └── tasks.py             # Async scan tasks
+│   ├── api/
+│   │   └── main.py              # FastAPI REST API (scan, export, analytics)
+│   ├── cli/
+│   │   └── main.py              # Typer CLI entrypoint
+│   └── templates/
+│       └── report.html          # Premium dark-mode HTML report template
+├── dashboard/                   # Next.js 16 SOC Dashboard
+│   ├── src/app/                 # App router pages (overview, scan, analytics, rules, jobs)
+│   ├── src/components/          # Reusable UI components (sidebar, icons)
+│   └── src/lib/                 # API client & utilities
+├── rules/                       # YARA detection rules (10+ rules across 6 categories)
+│   ├── credential_access/       # Mimikatz, LSASS, SAM dump detection
+│   ├── execution/               # PowerShell, script execution detection
+│   ├── persistence/             # Registry run keys, scheduled tasks
+│   ├── ransomware.yar           # LockBit, ransomware indicators
+│   ├── c2_frameworks.yar        # Cobalt Strike, C2 beacons
+│   └── ...
+├── test_samples/                # Mock malware samples for testing
+├── tests/                       # pytest test suite
+├── scripts/                     # Helper scripts (STIX download)
+├── data/                        # MITRE ATT&CK STIX bundle (git-ignored)
+├── reports/                     # Generated HTML reports (git-ignored)
+├── screenshots/                 # Dashboard & Docker screenshots
+├── Dockerfile                   # Multi-service container image
+├── docker-compose.yml           # Full stack orchestration
+├── pyproject.toml               # Project config & dependencies
+└── uv.lock                     # Locked dependency versions
+```
+
+---
+
+## ✏️ YARA Rule Format
+
+YaraTrix requires rules to have structured `meta:` fields for ATT&CK mapping:
 
 ```yara
 rule Suspicious_PowerShell_EncodedCommand {
@@ -121,7 +330,7 @@ Place all `.yar` files in the `rules/` directory. YaraTrix will discover and com
 
 ---
 
-## CLI Reference
+## 🖥️ CLI Reference
 
 ```
 Usage: yaratrix [OPTIONS] COMMAND [ARGS]...
@@ -138,56 +347,44 @@ Commands:
   serve            Start the FastAPI REST API server.
 ```
 
-### `scan`
+### Examples
 
 ```bash
-uv run yaratrix scan TARGET [OPTIONS]
+# Scan a suspicious file
+uv run yaratrix scan /path/to/suspicious.ps1
 
-Options:
-  --rules-dir PATH      Directory containing .yar rules  [default: rules/]
-  --stix-bundle PATH    Path to MITRE ATT&CK STIX bundle
-  --navigator           Also export an ATT&CK Navigator layer
-  --output PATH         Output path for JSON/Navigator results
-  --format [json|table] Output format for terminal  [default: table]
-```
+# Scan a directory
+uv run yaratrix scan /path/to/samples/
 
-### `generate-report`
+# Generate an HTML report
+uv run yaratrix generate-report /path/to/suspicious.ps1 --output report.html
 
-```bash
-uv run yaratrix generate-report TARGET [OPTIONS]
+# Export an ATT&CK Navigator layer
+uv run yaratrix scan /path/to/samples/ --navigator --output layer.json
 
-Options:
-  --rules-dir PATH   Directory containing .yar rules  [default: rules/]
-  --output PATH      Path for HTML report  [default: reports/<target>.html]
-```
-
-### `serve`
-
-```bash
-uv run yaratrix serve [OPTIONS]
-
-Options:
-  --host TEXT     Bind host  [default: 0.0.0.0]
-  --port INTEGER  Bind port  [default: 8000]
-  --reload        Enable hot-reload (dev mode)
+# Start the API server
+uv run yaratrix serve --port 8000 --reload
 ```
 
 ---
 
-## REST API
+## 🔌 REST API
 
-Start the server with `uv run yaratrix serve`, then:
+Start the server with `uv run yaratrix serve`, then access **Swagger UI** at [`http://localhost:8000/docs`](http://localhost:8000/docs).
 
 | Method | Endpoint | Description |
 |---|---|---|
 | `GET` | `/health` | Version, rule count, STIX status |
-| `POST` | `/scan` | Upload file → full JSON scan + ATT&CK enrichment |
-| `GET` | `/rules` | List all loaded YARA rules |
+| `POST` | `/scan` | Upload file → full JSON scan + intelligence report |
+| `GET` | `/rules` | List all loaded YARA rules with metadata |
 | `GET` | `/techniques` | List ATT&CK technique IDs from STIX bundle |
-| `POST` | `/export/navigator` | Upload file → download Navigator layer JSON |
 | `POST` | `/export/report` | Upload file → download HTML threat report |
+| `POST` | `/export/navigator` | Upload file → download Navigator layer JSON |
+| `GET` | `/analytics/summary` | Rule effectiveness & ATT&CK coverage analytics |
+| `POST` | `/jobs/submit` | Submit async scan job to Celery queue |
+| `GET` | `/jobs/{job_id}` | Poll async job status and results |
 
-### Example
+### Example Requests
 
 ```bash
 # Health check
@@ -197,60 +394,23 @@ curl http://localhost:8000/health
 curl -X POST http://localhost:8000/scan \
   -F "file=@/path/to/suspicious.ps1"
 
+# Download HTML report
+curl -X POST http://localhost:8000/export/report \
+  -F "file=@/path/to/suspicious.ps1" \
+  -o report.html
+
 # Get Navigator layer
 curl -X POST http://localhost:8000/export/navigator \
   -F "file=@/path/to/suspicious.ps1" \
   -o layer.json
 ```
 
-Interactive API docs available at **`http://localhost:8000/docs`** (Swagger UI).
-
 ---
 
-## Architecture
-
-```
-YaraTrix
-├── src/yaratrix/
-│   ├── rule_loader.py        # YARA rule discovery & compilation
-│   ├── yara_engine.py        # File/directory scanning engine
-│   ├── attack_client.py      # MITRE ATT&CK STIX client & caching
-│   ├── mapper.py             # Rule match → ATT&CK technique mapping
-│   ├── navigator_export.py   # ATT&CK Navigator layer generation
-│   ├── report_generator.py   # Jinja2 HTML report rendering
-│   ├── models.py             # Pydantic-like dataclasses
-│   ├── cli/main.py           # Typer CLI entrypoint
-│   ├── api/main.py           # FastAPI REST API
-│   └── templates/report.html # Premium dark-mode report template
-├── rules/                    # YARA rule files (.yar)
-├── data/                     # MITRE ATT&CK STIX bundle (cached)
-├── reports/                  # Generated HTML reports
-├── tests/                    # 96-test pytest suite
-└── scripts/                  # Helper scripts (STIX download, etc.)
-```
-
-### Data Flow
-
-```
-.yar rules ──► rule_loader ──► yara_engine ──► ScanResult
-                                                    │
-                                               mapper.py
-                                                    │
-                                          attack_client (STIX)
-                                                    │
-                                            MappingResult
-                                           ┌────────┴────────┐
-                                    navigator_export    report_generator
-                                           │                  │
-                                    layer.json          report.html
-```
-
----
-
-## Running Tests
+## 🧪 Running Tests
 
 ```bash
-# Run full test suite (96 tests, no STIX download needed)
+# Run full test suite (no STIX download needed)
 uv run pytest tests/ -v
 
 # With coverage report
@@ -262,25 +422,23 @@ uv run pytest tests/test_yara_engine.py -v
 
 ---
 
-## Project Structure
+## 🛠️ Tech Stack
 
-```
-YaraTrix/
-├── .github/
-│   └── workflows/ci.yml    # CI: Lint + Test (3.11/3.12 × Linux/Windows) + Build
-├── src/yaratrix/           # Main package
-├── tests/                  # pytest test suite
-├── rules/                  # Sample YARA rules
-├── scripts/                # Utility scripts
-├── data/                   # STIX bundle (git-ignored)
-├── reports/                # Generated reports (git-ignored)
-├── pyproject.toml          # Project config + tool settings
-└── uv.lock                 # Locked dependency versions
-```
+| Layer | Technology |
+|---|---|
+| **Core Engine** | Python 3.11+, YARA (libyara), STIX 2.1 |
+| **API Framework** | FastAPI, Uvicorn, Pydantic |
+| **Dashboard** | Next.js 16 (App Router), React 19, TypeScript |
+| **Task Queue** | Celery 5, Redis 7 |
+| **Database** | PostgreSQL 15, SQLAlchemy, Alembic |
+| **Containerisation** | Docker, Docker Compose |
+| **Package Management** | uv, npm |
+| **Code Quality** | Ruff (linting + formatting), pytest, pre-commit |
+| **CI/CD** | GitHub Actions |
 
 ---
 
-## Contributing
+## 🤝 Contributing
 
 1. Fork the repo and create a feature branch
 2. Install dev dependencies: `uv sync`
@@ -290,7 +448,7 @@ YaraTrix/
 
 ---
 
-## License
+## 📄 License
 
 MIT © 2026 Parth Kamble
 
@@ -298,6 +456,8 @@ MIT © 2026 Parth Kamble
 
 <div align="center">
 
-Built with ❤️ using [YARA](https://virustotal.github.io/yara/), [MITRE ATT&CK](https://attack.mitre.org/), [FastAPI](https://fastapi.tiangolo.com/), and [uv](https://github.com/astral-sh/uv)
+Built with ❤️ using [YARA](https://virustotal.github.io/yara/), [MITRE ATT&CK](https://attack.mitre.org/), [FastAPI](https://fastapi.tiangolo.com/), [Next.js](https://nextjs.org/), and [Docker](https://docker.com/)
+
+**⭐ Star this repo if you find it useful!**
 
 </div>

@@ -12,14 +12,13 @@ RUN pip install uv
 
 WORKDIR /app
 
-# Copy dependency files
-COPY pyproject.toml uv.lock ./
+# Copy the entire application first
+COPY . .
 
 # Install dependencies (system-wide in container)
 RUN uv pip install --system -e .
 
-# Copy the rest of the application
-COPY . .
+
 
 # Download the MITRE ATT&CK STIX bundle during build
 RUN python scripts/download_mitre_data.py

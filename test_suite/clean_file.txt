@@ -1,0 +1,3 @@
+Hello, this is a perfectly clean text file.
+It contains absolutely no malicious strings or indicators of compromise.
+It is safe to scan.

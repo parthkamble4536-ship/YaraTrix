@@ -17,11 +17,11 @@ from typing import Any
 # ──────────────────────────────────────────────────────────────────────────────
 
 SEVERITY_WEIGHTS: dict[str, float] = {
-    "critical": 0.40,
-    "high": 0.25,
-    "medium": 0.15,
-    "low": 0.08,
-    "informational": 0.03,
+    "critical": 0.80,
+    "high": 0.60,
+    "medium": 0.40,
+    "low": 0.20,
+    "informational": 0.05,
 }
 
 # Bonus score added per unique MITRE tactic covered

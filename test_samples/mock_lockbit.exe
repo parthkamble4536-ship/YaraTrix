@@ -1,0 +1,5 @@
+MZ
+LockBit
+Restore-My-Files.txt
+SOFTWARE\LockBit
+vssadmin delete shadows /all /quiet

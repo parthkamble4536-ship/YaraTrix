@@ -285,6 +285,11 @@ def map_scan_result(
     # Score and narrative
     confidence = _compute_confidence(unique_tactics, scan_result.matches)
     threat_level = _compute_threat_level(confidence)
+
+    # Production Override: If we have a CRITICAL match, enforce a CRITICAL threat level
+    if any(m.severity.value == "critical" for m in scan_result.matches):
+        threat_level = "critical"
+
     narrative = _build_narrative(unique_tactics, unique_techniques, scan_result.target_file)
 
     return MappingResult(

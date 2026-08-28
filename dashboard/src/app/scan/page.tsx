@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useRef } from "react";
+import React, { useState, useRef, Fragment } from "react";
 import { api, ScanResponse, IntelligenceReport } from "@/lib/api";
-import { IconUpload, IconScanner, IconChevronDown, IconChevronRight, IconFileCode } from "@/components/icons";
+import { IconUpload, IconScanner, IconChevronDown, IconChevronRight, IconFileCode, IconDownload, IconMap } from "@/components/icons";
 import { RadialGauge } from "@/components/icons";
 
 function confidenceColor(score: number): string {
@@ -20,6 +20,8 @@ export default function ScanPage() {
   const [error, setError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [expandedRow, setExpandedRow] = useState<number | null>(null);
+  const [downloadingReport, setDownloadingReport] = useState(false);
+  const [downloadingNav, setDownloadingNav] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   const handleFile = (f: File) => { setFile(f); setResult(null); setError(null); };
@@ -249,6 +251,62 @@ export default function ScanPage() {
               </div>
             </div>
 
+            {/* Export Actions */}
+            {file && (
+              <div className="card" style={{ marginTop: 16, animation: "fadeInUp 0.5s var(--ease-out) 0.05s both" }}>
+                <div className="card-title"><IconDownload size={14} /> Export Reports</div>
+                <div className="flex items-center gap-3" style={{ flexWrap: "wrap" }}>
+                  <button
+                    id="download-report-btn"
+                    className="btn btn-primary"
+                    disabled={downloadingReport}
+                    onClick={async () => {
+                      if (!file) return;
+                      setDownloadingReport(true);
+                      try {
+                        await api.downloadReport(file);
+                      } catch (e: unknown) {
+                        alert(e instanceof Error ? e.message : "Report download failed");
+                      } finally {
+                        setDownloadingReport(false);
+                      }
+                    }}
+                  >
+                    {downloadingReport ? (
+                      <><span className="spinning"><IconDownload size={14} /></span> Generating...</>
+                    ) : (
+                      <><IconDownload size={14} /> Download HTML Report</>
+                    )}
+                  </button>
+                  <button
+                    id="download-nav-btn"
+                    className="btn btn-secondary"
+                    disabled={downloadingNav || !result.matches?.length}
+                    onClick={async () => {
+                      if (!file) return;
+                      setDownloadingNav(true);
+                      try {
+                        await api.downloadNavigator(file);
+                      } catch (e: unknown) {
+                        alert(e instanceof Error ? e.message : "Navigator export failed");
+                      } finally {
+                        setDownloadingNav(false);
+                      }
+                    }}
+                  >
+                    {downloadingNav ? (
+                      <><span className="spinning"><IconMap size={14} /></span> Exporting...</>
+                    ) : (
+                      <><IconMap size={14} /> Download ATT&CK Navigator Layer</>
+                    )}
+                  </button>
+                </div>
+                <div style={{ marginTop: 10, fontSize: 11, color: "var(--text-muted)" }}>
+                  HTML Report includes kill-chain heatmap, technique breakdown, and rule match cards. Navigator JSON can be imported at <a href="https://mitre-attack.github.io/attack-navigator/" target="_blank" rel="noopener" style={{ color: "var(--accent)" }}>mitre-attack.github.io/attack-navigator</a>.
+                </div>
+              </div>
+            )}
+
             {/* Matched Rules — Expandable Table */}
             {result.matches?.length > 0 && (
               <div className="card" style={{ marginTop: 16, animation: "fadeInUp 0.5s var(--ease-out) 0.1s both" }}>
@@ -267,7 +325,7 @@ export default function ScanPage() {
                   </thead>
                   <tbody>
                     {result.matches.map((m, i) => (
-                      <>
+                      <Fragment key={`frag-${i}`}>
                         <tr
                           key={`row-${i}`}
                           className="expandable-row"
@@ -306,7 +364,7 @@ export default function ScanPage() {
                             </td>
                           </tr>
                         )}
-                      </>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

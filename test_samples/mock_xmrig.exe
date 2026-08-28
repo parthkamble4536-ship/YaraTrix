@@ -1,0 +1,6 @@
+MZ
+XMRig
+stratum+tcp://
+monero
+donate.v2.xmrig.com
+* COMMANDS: 'h' hashrate, 'p' pause, 'r' resume, 's' results, 'c' connection
