@@ -131,7 +131,7 @@ def scan_file_async(
         intel_engine = IntelligenceEngine()
         match_inputs = [
             RuleMatchInput(
-                rule_name=m.rule,
+                rule_name=m.rule_name,
                 severity=m.meta.get("severity", "medium") if m.meta else "medium",
                 mitre_technique=m.meta.get("mitre_technique", "") if m.meta else "",
                 mitre_tactic=m.meta.get("mitre_tactic", "") if m.meta else "",

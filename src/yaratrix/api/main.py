@@ -61,7 +61,7 @@ logger = logging.getLogger(__name__)
 #  Configuration
 # ─────────────────────────────────────────────────────────────────────────────
 
-_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent
+_PROJECT_ROOT = Path(__file__).resolve().parent.parent.parent.parent
 DEFAULT_RULES_DIR = _PROJECT_ROOT / "rules"
 MAX_FILE_SIZE_MB = 50
 MAX_FILE_SIZE_BYTES = MAX_FILE_SIZE_MB * 1024 * 1024
@@ -322,7 +322,7 @@ async def scan_upload(
         intel_engine = IntelligenceEngine()
         match_inputs = [
             RuleMatchInput(
-                rule_name=m.rule,
+                rule_name=m.rule_name,
                 severity=m.meta.get("severity", "medium") if m.meta else "medium",
                 mitre_technique=m.meta.get("mitre_technique", "") if m.meta else "",
                 mitre_tactic=m.meta.get("mitre_tactic", "") if m.meta else "",

@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { api, CoverageReport, RuleStat } from "@/lib/api";
+import { IconChart, IconTarget, IconActivity, IconAlertTriangle, IconCheckCircle, IconHexagon } from "@/components/icons";
+import { RadialGauge } from "@/components/icons";
 
 const ALL_TACTICS = [
   "Initial Access", "Execution", "Persistence", "Privilege Escalation",
@@ -52,35 +54,56 @@ export default function AnalyticsPage() {
 
         {/* Coverage Summary */}
         {coverage && (
-          <div className="card card-glow" style={{ marginBottom: 24 }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 20 }}>
-              <div>
-                <div className="card-title" style={{ marginBottom: 6 }}>▦ MITRE ATT&CK Coverage</div>
-                <div style={{ fontSize: 40, fontWeight: 800, color: coverage.coverage_percentage >= 50 ? "var(--threat-low)" : "var(--threat-medium)" }}>
-                  {coverage.coverage_percentage.toFixed(0)}%
-                </div>
-                <div style={{ fontSize: 13, color: "var(--text-secondary)", marginTop: 4 }}>
-                  {coverage.tactic_count} of {ALL_TACTICS.length} tactics covered
-                </div>
-              </div>
-              <div style={{ textAlign: "right" }}>
-                <div style={{ fontSize: 12, color: "var(--text-muted)", marginBottom: 8 }}>
-                  {coverage.covered_techniques.length} unique techniques
-                </div>
-              </div>
-            </div>
+          <div className="card card-glow" style={{ marginBottom: 20, animation: "fadeInUp 0.4s var(--ease-out)" }}>
+            <div style={{ display: "flex", gap: 32, alignItems: "center", flexWrap: "wrap" }}>
+              {/* Radial Gauge */}
+              <RadialGauge
+                value={coverage.coverage_percentage / 100}
+                size={140}
+                strokeWidth={10}
+                color={coverage.coverage_percentage >= 50 ? "var(--threat-low)" : "var(--threat-medium)"}
+                label="ATT&CK Coverage"
+                sublabel={`${coverage.tactic_count} of ${ALL_TACTICS.length} tactics`}
+              />
 
-            <div className="progress-bar" style={{ marginBottom: 20, height: 8 }}>
-              <div className="progress-fill" style={{ width: `${coverage.coverage_percentage}%` }} />
+              <div style={{ flex: 1, minWidth: 250 }}>
+                <div className="card-title" style={{ marginBottom: 8 }}>
+                  <IconTarget size={14} /> MITRE ATT&CK Coverage
+                </div>
+                <div style={{ display: "flex", gap: 24, marginBottom: 12 }}>
+                  <div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: "var(--accent)", fontVariantNumeric: "tabular-nums" }}>
+                      {coverage.covered_techniques.length}
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>Techniques</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: "var(--threat-low)", fontVariantNumeric: "tabular-nums" }}>
+                      {coverage.tactic_count}
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>Tactics Covered</div>
+                  </div>
+                  <div>
+                    <div style={{ fontSize: 24, fontWeight: 800, color: "var(--threat-critical)", fontVariantNumeric: "tabular-nums" }}>
+                      {coverage.missing_count}
+                    </div>
+                    <div style={{ fontSize: 10, color: "var(--text-muted)", fontWeight: 600, textTransform: "uppercase", letterSpacing: "0.5px" }}>Gaps</div>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Heatmap grid */}
-            <div className="tactic-grid">
+            <div className="tactic-grid stagger-children" style={{ marginTop: 20 }}>
               {ALL_TACTICS.map((t) => {
                 const covered = coverage.covered_tactics.includes(t);
                 return (
                   <div key={t} className={`tactic-cell ${covered ? "covered" : "missing"}`}>
-                    <span className="tactic-indicator">{covered ? "⬡" : "○"}</span>
+                    <span className="tactic-indicator">
+                      {covered
+                        ? <IconCheckCircle size={18} color="var(--accent)" />
+                        : <IconAlertTriangle size={18} color="var(--text-muted)" />}
+                    </span>
                     {t}
                   </div>
                 );
@@ -88,18 +111,22 @@ export default function AnalyticsPage() {
             </div>
 
             {coverage.missing_tactics.length > 0 && (
-              <div style={{ marginTop: 16, padding: "12px 16px", background: "rgba(255,170,0,0.08)", borderRadius: "var(--radius-md)", border: "1px solid rgba(255,170,0,0.2)", fontSize: 13, color: "var(--threat-medium)" }}>
-                💡 {coverage.detection_gap_advice}
+              <div style={{ marginTop: 16, padding: "12px 16px", background: "var(--threat-medium-dim)", borderRadius: "var(--radius-md)", border: "1px solid rgba(255,170,0,0.15)", fontSize: 12, color: "var(--threat-medium)", display: "flex", alignItems: "flex-start", gap: 8 }}>
+                <IconAlertTriangle size={14} color="var(--threat-medium)" style={{ flexShrink: 0, marginTop: 1 }} />
+                <span>{coverage.detection_gap_advice}</span>
               </div>
             )}
           </div>
         )}
 
         {/* Rule Effectiveness Table */}
-        <div className="card">
-          <div className="card-title">⬡ Rule Effectiveness Scoreboard ({rules.length} rules)</div>
+        <div className="card" style={{ animation: "fadeInUp 0.4s var(--ease-out) 0.1s both" }}>
+          <div className="card-title">
+            <IconChart size={14} /> Rule Effectiveness Scoreboard ({rules.length} rules)
+          </div>
           {rules.length === 0 ? (
             <div className="empty-state" style={{ padding: "32px" }}>
+              <IconActivity size={32} color="var(--text-muted)" style={{ margin: "0 auto 12px", display: "block", opacity: 0.3 }} />
               <p>No rules have triggered yet. Run some scans to generate analytics.</p>
             </div>
           ) : (
@@ -118,15 +145,21 @@ export default function AnalyticsPage() {
                 {rules.map((r, i) => (
                   <tr key={i}>
                     <td><span className="mono">{r.rule_name}</span></td>
-                    <td style={{ fontWeight: 700 }}>{r.total_hits}</td>
-                    <td style={{ color: "var(--threat-low)", fontWeight: 600 }}>{r.true_positives}</td>
-                    <td style={{ color: "var(--threat-critical)", fontWeight: 600 }}>{r.false_positives}</td>
+                    <td style={{ fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{r.total_hits}</td>
+                    <td style={{ color: "var(--threat-low)", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{r.true_positives}</td>
+                    <td style={{ color: "var(--threat-critical)", fontWeight: 700, fontVariantNumeric: "tabular-nums" }}>{r.false_positives}</td>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div style={{ flex: 1, background: "rgba(255,255,255,0.06)", borderRadius: 3, height: 6, overflow: "hidden", minWidth: 60 }}>
-                          <div style={{ height: "100%", width: `${r.effectiveness_score * 100}%`, background: r.effectiveness_score >= 0.7 ? "var(--threat-low)" : "var(--threat-medium)", borderRadius: 3 }} />
+                        <div style={{ flex: 1, background: "rgba(255,255,255,0.04)", borderRadius: "var(--radius-full)", height: 4, overflow: "hidden", minWidth: 60 }}>
+                          <div style={{
+                            height: "100%",
+                            width: `${r.effectiveness_score * 100}%`,
+                            background: r.effectiveness_score >= 0.7 ? "var(--threat-low)" : r.effectiveness_score >= 0.4 ? "var(--threat-medium)" : "var(--threat-critical)",
+                            borderRadius: "var(--radius-full)",
+                            transition: "width 0.6s var(--ease-out)",
+                          }} />
                         </div>
-                        <span style={{ fontSize: 12, fontWeight: 700, minWidth: 32 }}>
+                        <span style={{ fontSize: 12, fontWeight: 700, minWidth: 32, fontVariantNumeric: "tabular-nums" }}>
                           {r.true_positives + r.false_positives > 0 ? `${Math.round(r.effectiveness_score * 100)}%` : "—"}
                         </span>
                       </div>

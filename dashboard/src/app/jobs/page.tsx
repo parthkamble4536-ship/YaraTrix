@@ -2,6 +2,8 @@
 
 import { useEffect, useState, useRef } from "react";
 import { api, JobResponse, SubmitJobResponse } from "@/lib/api";
+import { IconQueue, IconUpload, IconClock, IconCheckCircle, IconAlertTriangle } from "@/components/icons";
+import { RadialGauge } from "@/components/icons";
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<JobResponse[]>([]);
@@ -35,9 +37,7 @@ export default function JobsPage() {
       const res = await api.submitJob(file);
       setSubmitResult(res);
       setPollingId(res.job_id);
-      // Start polling
       pollingRef.current = setInterval(() => pollJob(res.job_id), 2000);
-      // Add placeholder immediately
       setJobs((prev) => [
         { job_id: res.job_id, status: "pending", target: file.name, created_at: new Date().toISOString(), completed_at: null },
         ...prev,
@@ -54,6 +54,15 @@ export default function JobsPage() {
     return () => { if (pollingRef.current) clearInterval(pollingRef.current); };
   }, []);
 
+  const statusIcon = (status: string) => {
+    switch (status) {
+      case "completed": return <IconCheckCircle size={12} color="var(--threat-low)" />;
+      case "failed": return <IconAlertTriangle size={12} color="var(--threat-critical)" />;
+      case "running": return <span className="spinning"><IconQueue size={12} /></span>;
+      default: return <IconClock size={12} color="var(--threat-medium)" />;
+    }
+  };
+
   return (
     <>
       <div className="topbar">
@@ -62,8 +71,8 @@ export default function JobsPage() {
           <div className="topbar-subtitle">Non-blocking distributed scan queue</div>
         </div>
         {pollingId && (
-          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, color: "var(--accent)", fontSize: 13 }}>
-            <span className="spinning">⟳</span> Polling job #{pollingId}…
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 8, color: "var(--accent)", fontSize: 12, fontWeight: 600 }}>
+            <span className="spinning"><IconQueue size={14} /></span> Polling job #{pollingId}…
           </div>
         )}
       </div>
@@ -74,8 +83,8 @@ export default function JobsPage() {
         </div>
 
         {/* Submit form */}
-        <div className="card" style={{ marginBottom: 24 }}>
-          <div className="card-title">⟳ Submit New Job</div>
+        <div className="card" style={{ marginBottom: 20, animation: "fadeInUp 0.4s var(--ease-out)" }}>
+          <div className="card-title"><IconQueue size={14} /> Submit New Job</div>
           <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
             <input
               ref={inputRef}
@@ -89,7 +98,8 @@ export default function JobsPage() {
               className="btn btn-secondary"
               onClick={() => inputRef.current?.click()}
             >
-              {file ? `📄 ${file.name}` : "Choose File"}
+              <IconUpload size={14} />
+              {file ? file.name : "Choose File"}
             </button>
             <button
               id="submit-job-btn"
@@ -97,12 +107,16 @@ export default function JobsPage() {
               onClick={handleSubmit}
               disabled={!file || submitting}
             >
-              {submitting ? <><span className="spinning">⟳</span> Submitting…</> : "⟳ Submit to Queue"}
+              {submitting ? (
+                <><span className="spinning"><IconQueue size={14} /></span> Submitting…</>
+              ) : (
+                <><IconQueue size={14} /> Submit to Queue</>
+              )}
             </button>
           </div>
           {submitResult && (
-            <div style={{ marginTop: 12, padding: "10px 14px", background: "var(--accent-dim)", borderRadius: "var(--radius-md)", border: "1px solid var(--border-bright)", fontSize: 13, color: "var(--accent)" }}>
-              Job #{submitResult.job_id} submitted. Auto-polling every 2 seconds…
+            <div style={{ marginTop: 12, padding: "10px 14px", background: "var(--accent-dim)", borderRadius: "var(--radius-md)", border: "1px solid rgba(0, 212, 255, 0.12)", fontSize: 12, color: "var(--accent)", display: "flex", alignItems: "center", gap: 6 }}>
+              <IconCheckCircle size={14} /> Job #{submitResult.job_id} submitted. Auto-polling every 2 seconds…
             </div>
           )}
         </div>
@@ -110,13 +124,13 @@ export default function JobsPage() {
         {/* Jobs list */}
         {jobs.length === 0 ? (
           <div className="empty-state">
-            <span className="empty-state-icon">⟳</span>
+            <IconQueue size={36} color="var(--text-muted)" style={{ margin: "0 auto 16px", display: "block", opacity: 0.3 }} />
             <h3>No jobs yet</h3>
             <p>Submit a file above to add it to the Celery worker queue</p>
           </div>
         ) : (
-          <div className="card">
-            <div className="card-title">Recent Jobs ({jobs.length})</div>
+          <div className="card" style={{ animation: "fadeInUp 0.4s var(--ease-out) 0.1s both" }}>
+            <div className="card-title"><IconClock size={14} /> Recent Jobs ({jobs.length})</div>
             <table className="data-table">
               <thead>
                 <tr>
@@ -134,25 +148,27 @@ export default function JobsPage() {
                   return (
                     <tr key={job.job_id}>
                       <td><span className="mono" style={{ color: "var(--accent)" }}>#{job.job_id}</span></td>
-                      <td style={{ maxWidth: 200, overflow: "hidden", textOverflow: "ellipsis" }}>{job.target}</td>
+                      <td style={{ maxWidth: 200 }} className="truncate">{job.target}</td>
                       <td>
                         <span className={`job-status ${job.status}`}>
-                          {job.status === "running" && <span className="spinning">⟳</span>}
+                          {statusIcon(job.status)}
                           {job.status}
                         </span>
                       </td>
-                      <td style={{ color: "var(--text-secondary)", fontSize: 12 }}>
+                      <td style={{ color: "var(--text-secondary)", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
                         {job.created_at ? new Date(job.created_at).toLocaleTimeString() : "—"}
                       </td>
-                      <td style={{ color: "var(--text-secondary)", fontSize: 12 }}>
+                      <td style={{ color: "var(--text-secondary)", fontSize: 12, fontVariantNumeric: "tabular-nums" }}>
                         {job.completed_at ? new Date(job.completed_at).toLocaleTimeString() : "—"}
                       </td>
                       <td>
                         {artifact ? (
-                          <span style={{ color: artifact.confidence_score >= 0.6 ? "var(--threat-critical)" : artifact.confidence_score > 0 ? "var(--threat-medium)" : "var(--threat-low)", fontWeight: 700 }}>
-                            {Math.round(artifact.confidence_score * 100)}%
-                          </span>
-                        ) : "—"}
+                          <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                            <RadialGauge value={artifact.confidence_score} size={32} strokeWidth={3} />
+                          </div>
+                        ) : (
+                          <span style={{ color: "var(--text-muted)" }}>—</span>
+                        )}
                       </td>
                     </tr>
                   );
