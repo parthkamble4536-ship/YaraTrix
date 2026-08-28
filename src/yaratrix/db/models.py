@@ -1,7 +1,9 @@
-from sqlalchemy import Column, Integer, String, Float, DateTime, ForeignKey, Text, Boolean
-from sqlalchemy.sql import func
+from sqlalchemy import Boolean, Column, DateTime, Float, ForeignKey, Integer, String, Text
 from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+
 from .session import Base
+
 
 class ScanJob(Base):
     __tablename__ = "scan_jobs"
@@ -11,7 +13,7 @@ class ScanJob(Base):
     target_path = Column(String)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     completed_at = Column(DateTime(timezone=True), nullable=True)
-    
+
     artifacts = relationship("FileArtifact", back_populates="job")
 
 
@@ -25,7 +27,7 @@ class FileArtifact(Base):
     file_size = Column(Integer)
     scanned_at = Column(DateTime(timezone=True), server_default=func.now())
     confidence_score = Column(Float, default=0.0)
-    
+
     job = relationship("ScanJob", back_populates="artifacts")
     match_events = relationship("MatchEvent", back_populates="artifact")
 
@@ -37,7 +39,7 @@ class MatchEvent(Base):
     artifact_id = Column(Integer, ForeignKey("file_artifacts.id"))
     rule_name = Column(String, index=True)
     mitre_techniques = Column(String)  # Comma separated technique IDs
-    mitre_tactics = Column(String)     # Comma separated tactics
+    mitre_tactics = Column(String)  # Comma separated tactics
     severity = Column(String)
     description = Column(Text)
     is_false_positive = Column(Boolean, default=False)

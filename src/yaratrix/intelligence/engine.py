@@ -66,6 +66,7 @@ TACTIC_LABELS: dict[str, str] = {
 @dataclass
 class RuleMatchInput:
     """Input structure representing a single YARA rule match."""
+
     rule_name: str
     severity: str = "medium"
     mitre_technique: str = ""
@@ -79,9 +80,10 @@ class IntelligenceReport:
     The enriched intelligence output for a single scanned file.
     Contains confidence score, behavioral narrative, and tactic coverage.
     """
-    confidence_score: float = 0.0        # 0.0 - 1.0
-    confidence_label: str = "Clean"      # Clean / Low / Medium / High / Critical
-    threat_level: str = "none"           # none / low / medium / high / critical
+
+    confidence_score: float = 0.0  # 0.0 - 1.0
+    confidence_label: str = "Clean"  # Clean / Low / Medium / High / Critical
+    threat_level: str = "none"  # none / low / medium / high / critical
     tactic_coverage: list[str] = field(default_factory=list)
     technique_ids: list[str] = field(default_factory=list)
     behavioral_narrative: str = ""
@@ -159,8 +161,7 @@ class IntelligenceEngine:
           - Diversity bonus for each unique MITRE tactic covered
         """
         base_score = sum(
-            SEVERITY_WEIGHTS.get(m.severity.lower(), SEVERITY_WEIGHTS["medium"])
-            for m in matches
+            SEVERITY_WEIGHTS.get(m.severity.lower(), SEVERITY_WEIGHTS["medium"]) for m in matches
         )
 
         # Add bonus for tactic diversity (attacker using multiple phases)
@@ -219,8 +220,7 @@ class IntelligenceEngine:
         # Build the narrative sentence
         parts: list[str] = [
             f"Observed {tactic_str} activity.",
-            f"{rule_count} YARA rule(s) triggered across "
-            f"{tactic_count} MITRE ATT&CK tactic(s).",
+            f"{rule_count} YARA rule(s) triggered across {tactic_count} MITRE ATT&CK tactic(s).",
         ]
 
         # Add threat-specific context
@@ -231,19 +231,14 @@ class IntelligenceEngine:
             )
         elif threat == "high":
             parts.append(
-                "High-confidence suspicious behavior detected. "
-                "Analyst review is recommended."
+                "High-confidence suspicious behavior detected. Analyst review is recommended."
             )
         elif threat == "medium":
             parts.append(
-                "Medium-confidence suspicious indicators found. "
-                "Further triage is advised."
+                "Medium-confidence suspicious indicators found. Further triage is advised."
             )
         else:
-            parts.append(
-                "Low-confidence indicators detected. "
-                "May require contextual review."
-            )
+            parts.append("Low-confidence indicators detected. May require contextual review.")
 
         return " ".join(parts)
 

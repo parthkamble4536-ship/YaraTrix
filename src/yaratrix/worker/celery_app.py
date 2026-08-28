@@ -7,6 +7,7 @@ defaulting to a local Redis instance for development.
 """
 
 import os
+
 from celery import Celery
 
 # Redis URL for both broker (task queue) and backend (result storage)
@@ -29,7 +30,7 @@ celery_app.conf.update(
     timezone="UTC",
     enable_utc=True,
     # Task reliability settings
-    task_acks_late=True,          # Acknowledge task only AFTER completion
+    task_acks_late=True,  # Acknowledge task only AFTER completion
     worker_prefetch_multiplier=1,  # One task per worker at a time (fair dispatch)
     # Result expiry: keep results in Redis for 24 hours
     result_expires=86400,

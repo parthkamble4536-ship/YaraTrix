@@ -39,21 +39,21 @@ from typing import Any
 from fastapi import Depends, FastAPI, File, HTTPException, Query, UploadFile, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import Response
+from sqlalchemy import text
+from sqlalchemy.orm import Session
 
 from yaratrix import __version__
+from yaratrix.analytics import AnalyticsEngine
 from yaratrix.attack_client import AttackClient, get_default_client
+from yaratrix.db.models import FileArtifact, MatchEvent, ScanJob
+from yaratrix.db.session import get_db
+from yaratrix.intelligence import IntelligenceEngine, RuleMatchInput
 from yaratrix.mapper import map_scan_result, map_scan_results
 from yaratrix.navigator_export import build_navigator_layer
 from yaratrix.report_generator import render_report
 from yaratrix.rule_loader import RuleLoaderResult, load_rules
-from yaratrix.yara_engine import scan_file
-from sqlalchemy.orm import Session
-from sqlalchemy import text
-from yaratrix.db.session import get_db
-from yaratrix.db.models import ScanJob, FileArtifact, MatchEvent
-from yaratrix.intelligence import IntelligenceEngine, RuleMatchInput
 from yaratrix.worker.tasks import scan_file_async
-from yaratrix.analytics import AnalyticsEngine
+from yaratrix.yara_engine import scan_file
 
 logger = logging.getLogger(__name__)
 
@@ -592,23 +592,25 @@ async def get_job_status(
         artifact_data = []
         for artifact in artifacts:
             events = db.query(MatchEvent).filter(MatchEvent.artifact_id == artifact.id).all()
-            artifact_data.append({
-                "artifact_id": artifact.id,
-                "file_path": artifact.file_path,
-                "file_hash": artifact.file_hash,
-                "file_size": artifact.file_size,
-                "confidence_score": artifact.confidence_score,
-                "match_events": [
-                    {
-                        "rule_name": e.rule_name,
-                        "mitre_techniques": e.mitre_techniques,
-                        "mitre_tactics": e.mitre_tactics,
-                        "severity": e.severity,
-                        "is_false_positive": e.is_false_positive,
-                    }
-                    for e in events
-                ],
-            })
+            artifact_data.append(
+                {
+                    "artifact_id": artifact.id,
+                    "file_path": artifact.file_path,
+                    "file_hash": artifact.file_hash,
+                    "file_size": artifact.file_size,
+                    "confidence_score": artifact.confidence_score,
+                    "match_events": [
+                        {
+                            "rule_name": e.rule_name,
+                            "mitre_techniques": e.mitre_techniques,
+                            "mitre_tactics": e.mitre_tactics,
+                            "severity": e.severity,
+                            "is_false_positive": e.is_false_positive,
+                        }
+                        for e in events
+                    ],
+                }
+            )
         response["artifacts"] = artifact_data
 
     return response

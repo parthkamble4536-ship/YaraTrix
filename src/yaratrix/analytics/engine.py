@@ -43,6 +43,7 @@ ALL_TACTICS = [
 @dataclass
 class RuleStats:
     """Statistics for a single YARA rule."""
+
     rule_name: str
     total_hits: int = 0
     true_positives: int = 0
@@ -56,14 +57,18 @@ class RuleStats:
             "true_positives": self.true_positives,
             "false_positives": self.false_positives,
             "effectiveness_score": round(self.effectiveness_score, 3),
-            "noise_level": "high" if self.false_positives > self.true_positives else
-                           "medium" if self.false_positives > 0 else "low",
+            "noise_level": "high"
+            if self.false_positives > self.true_positives
+            else "medium"
+            if self.false_positives > 0
+            else "low",
         }
 
 
 @dataclass
 class CoverageReport:
     """MITRE ATT&CK coverage report."""
+
     covered_tactics: list[str] = field(default_factory=list)
     missing_tactics: list[str] = field(default_factory=list)
     covered_techniques: list[str] = field(default_factory=list)
@@ -100,35 +105,34 @@ class AnalyticsEngine:
         """
         total_jobs = db.query(func.count(ScanJob.id)).scalar() or 0
         completed_jobs = (
-            db.query(func.count(ScanJob.id))
-            .filter(ScanJob.status == "completed")
-            .scalar() or 0
+            db.query(func.count(ScanJob.id)).filter(ScanJob.status == "completed").scalar() or 0
         )
         failed_jobs = (
-            db.query(func.count(ScanJob.id))
-            .filter(ScanJob.status == "failed")
-            .scalar() or 0
+            db.query(func.count(ScanJob.id)).filter(ScanJob.status == "failed").scalar() or 0
         )
 
         total_artifacts = db.query(func.count(FileArtifact.id)).scalar() or 0
         threat_artifacts = (
             db.query(func.count(FileArtifact.id))
             .filter(FileArtifact.confidence_score > 0.0)
-            .scalar() or 0
+            .scalar()
+            or 0
         )
         clean_artifacts = total_artifacts - threat_artifacts
 
         avg_confidence = (
             db.query(func.avg(FileArtifact.confidence_score))
             .filter(FileArtifact.confidence_score > 0.0)
-            .scalar() or 0.0
+            .scalar()
+            or 0.0
         )
 
         total_events = db.query(func.count(MatchEvent.id)).scalar() or 0
         false_positives = (
             db.query(func.count(MatchEvent.id))
             .filter(MatchEvent.is_false_positive.is_(True))
-            .scalar() or 0
+            .scalar()
+            or 0
         )
 
         # Top 5 most triggered rules
@@ -157,10 +161,7 @@ class AnalyticsEngine:
                 "total": total_events,
                 "confirmed_false_positives": false_positives,
             },
-            "top_triggered_rules": [
-                {"rule": row.rule_name, "hits": row.hits}
-                for row in top_rules
-            ],
+            "top_triggered_rules": [{"rule": row.rule_name, "hits": row.hits} for row in top_rules],
         }
 
     def get_rule_effectiveness(self, db: Session) -> list[dict[str, Any]]:
@@ -198,13 +199,15 @@ class AnalyticsEngine:
             reviewed = tps + fps
             score = (tps / reviewed) if reviewed > 0 else 0.0
 
-            results.append(RuleStats(
-                rule_name=row.rule_name,
-                total_hits=row.total,
-                true_positives=tps,
-                false_positives=fps,
-                effectiveness_score=score,
-            ))
+            results.append(
+                RuleStats(
+                    rule_name=row.rule_name,
+                    total_hits=row.total,
+                    true_positives=tps,
+                    false_positives=fps,
+                    effectiveness_score=score,
+                )
+            )
 
         # Sort by total hits descending
         results.sort(key=lambda r: r.total_hits, reverse=True)
@@ -240,8 +243,12 @@ class AnalyticsEngine:
                 normalized = t.strip().replace("_", " ").replace("-", " ").title()
                 raw_tactics.add(normalized)
 
-        covered_tactics = [t for t in ALL_TACTICS if t in raw_tactics or
-                           t.replace(" ", "_").lower() in {r.replace(" ", "_").lower() for r in raw_tactics}]
+        covered_tactics = [
+            t
+            for t in ALL_TACTICS
+            if t in raw_tactics
+            or t.replace(" ", "_").lower() in {r.replace(" ", "_").lower() for r in raw_tactics}
+        ]
         missing_tactics = [t for t in ALL_TACTICS if t not in covered_tactics]
 
         covered_techniques: list[str] = []

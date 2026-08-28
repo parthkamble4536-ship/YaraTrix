@@ -22,14 +22,14 @@ from pathlib import Path
 
 from celery import Task
 
-from yaratrix.worker.celery_app import celery_app
-from yaratrix.db.session import SessionLocal
-from yaratrix.db.models import ScanJob, FileArtifact, MatchEvent
-from yaratrix.intelligence import IntelligenceEngine, RuleMatchInput
-from yaratrix.rule_loader import load_rules
-from yaratrix.yara_engine import scan_file
-from yaratrix.mapper import map_scan_results
 from yaratrix.attack_client import get_default_client
+from yaratrix.db.models import FileArtifact, MatchEvent, ScanJob
+from yaratrix.db.session import SessionLocal
+from yaratrix.intelligence import IntelligenceEngine, RuleMatchInput
+from yaratrix.mapper import map_scan_results
+from yaratrix.rule_loader import load_rules
+from yaratrix.worker.celery_app import celery_app
+from yaratrix.yara_engine import scan_file
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +43,7 @@ class ScanTask(Task):
     Custom Celery Task base class with lazy-loaded shared resources.
     Resources are loaded once per worker process, not once per task.
     """
+
     _rules = None
     _attack_client = None
 
@@ -170,7 +171,9 @@ def scan_file_async(
 
         logger.info(
             "Worker: Scan complete for job=%d artifact=%d confidence=%.2f",
-            job_id, artifact.id, intel_report.confidence_score,
+            job_id,
+            artifact.id,
+            intel_report.confidence_score,
         )
 
         return {
