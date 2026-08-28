@@ -1,4 +1,4 @@
-# YaraTrix 🛡️
+<h1 align="center">YaraTrix 🛡️</h1>
 
 <div align="center">
 
